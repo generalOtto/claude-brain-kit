@@ -5,33 +5,31 @@ memory that persists everything {{YOUR_NAME}} and I (Claude) do together. It is 
 into `~/.claude/CLAUDE.md`, so it loads into **every** Claude Code session on every
 machine. Read it as: *who I'm working with, and how to remember.*
 
-<!-- ──────────────────────────────────────────────────────────────────────────
-FIRST-RUN SETUP — Claude: read this section carefully. Delete it when done.
+## ⚠️ FIRST-RUN SETUP — Claude: delete this whole section when done
 
-If identity/about-me.md still contains placeholder text ("REPLACE ME"), this brain
+If `identity/about-me.md` still contains placeholder text ("REPLACE ME"), this brain
 is brand new. Offer to set it up right now by interviewing your human:
 
-1. Ask, conversationally and one at a time (not as a form):
+1. Ask, conversationally and **one at a time** (not as a form):
    - Their name, and what they'd like you to call them
    - What they do (work, and what they build/care about outside it)
    - How they like to work with you (direct or chatty? big picture or detail?
      anything that annoys them about AI assistants?)
    - What they're currently working on (1–3 projects or ongoing threads)
 2. Write what you learn:
-   - identity/about-me.md      — who they are (facts, in their own words)
-   - identity/how-we-work.md   — collaboration preferences
-   - projects/<name>.md        — one short note per current project
-3. Update INDEX.md: one line per note you wrote.
-4. If any {{PLACEHOLDER}} tokens remain in this file or INDEX.md (setup.sh
+   - `identity/about-me.md`      — who they are (facts, in their own words)
+   - `identity/how-we-work.md`   — collaboration preferences
+   - `projects/<name>.md`        — one short note per current project
+3. Update `INDEX.md`: one line per note you wrote.
+4. If any `{{PLACEHOLDER}}` tokens remain in this file or `INDEX.md` (setup.sh
    normally replaces them), fill them in with the name they gave you.
-5. Delete this entire HTML comment block from CLAUDE.md.
-6. Commit everything: git add -A && git commit -m "brain: first-run setup"
+5. **Delete this entire "FIRST-RUN SETUP" section from CLAUDE.md.**
+6. Commit everything: `git add -A && git commit -m "brain: first-run setup"`
    — and push if a remote is configured.
 7. Tell them their brain is live, and that from now on you'll remember.
 
 Keep the interview light — 5 minutes, not an interrogation. They can always add
 more later; the brain grows with use.
-─────────────────────────────────────────────────────────────────────────── -->
 
 ## Where the brain lives
 - Canonical store: this git repo (a **private** GitHub repo), cloned locally.
