@@ -1,0 +1,16 @@
+# Secrets backstop: the brain's policy is pointers-only (see pointers/secrets.md);
+# this scan is the deterministic second wall, and matters more once multiple
+# surfaces write to the repo (Claude Code, the claude.ai GitHub connector, …).
+# Free for personal-account repos; org-owned repos need a (free) GITLEAKS_LICENSE.
+name: gitleaks
+on: [push]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

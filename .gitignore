@@ -1,0 +1,17 @@
+# Safety net — the brain stores POINTERS, never secret values.
+*.env
+*.env.*
+*.p8
+*.pem
+*.key
+*.keystore
+*.p12
+id_rsa*
+id_ed25519*
+*secret*.txt
+*token*.txt
+secrets.env
+
+# OS noise
+.DS_Store
+Thumbs.db

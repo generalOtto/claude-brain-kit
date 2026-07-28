@@ -1,0 +1,5 @@
+# gitleaks config for the brain repo — default rules apply to everything.
+# Pointer syntax like  API key → password manager item "Acme prod"  contains no
+# secret material and passes the default rules untouched.
+[extend]
+useDefault = true
