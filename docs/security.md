@@ -28,6 +28,14 @@ Who can read a private repo: you, collaborators you add, and any app/connector y
 grant access (the GitHub MCP connector acts *as you* under the access you gave it —
 prefer the tightest scope offered, e.g. a fine-grained PAT limited to this repo).
 
+**Secondary devices: prefer deploy keys over account auth.** When a casual machine
+(gaming box, shared computer) gets a full clone, give it a **deploy key** — an SSH
+key added under the brain repo's *Settings → Deploy keys* ("Allow write access" if
+it should commit memories). A deploy key can touch exactly one repo; if that machine
+is ever compromised, sold, or discarded without a wipe, your GitHub account and
+every other repo stay untouched, and revoking is one click on one key. [bootstrap.md](bootstrap.md)
+uses this pattern for its "full" tier.
+
 ## Rule 2 — Secrets are pointers, never values
 
 Even in a private repo, no secret value ever gets written down here — not passwords,

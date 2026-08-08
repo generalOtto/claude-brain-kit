@@ -84,8 +84,9 @@ Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
 
 | Guide | What it unlocks |
 |---|---|
-| [claude.ai + mobile](docs/claude-ai-and-mobile.md) | The same brain in browser chats and the phone app — read *and write* — via the GitHub MCP connector (and the read-only-integration trap to avoid) |
-| [More surfaces](docs/more-surfaces.md) | Second machine in two commands; Claude Code web; cloud sessions |
+| [claude.ai + mobile](docs/claude-ai-and-mobile.md) | The same brain in browser chats and the phone app — read *and write* — via the GitHub MCP connector (plus the two traps: the read-only integration, and the authorized-but-not-installed 404) |
+| [One-sentence onboarding](docs/bootstrap.md) | Add any new device by saying one sentence — Claude reads the setup instructions *from the brain itself* and self-onboards (connector-only "satellite" tier, or full clone via a repo-scoped deploy key) |
+| [More surfaces](docs/more-surfaces.md) | Second machine; Claude Code web; cloud sessions |
 | [Maintenance](docs/maintenance.md) | The habits + a monthly consolidation prompt that keep the brain trustworthy |
 | [Security](docs/security.md) | Why private, the pointers-not-secrets policy, and the three enforcement layers |
 

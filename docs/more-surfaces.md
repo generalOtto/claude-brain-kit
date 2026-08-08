@@ -2,7 +2,21 @@
 
 ## Another computer
 
-The brain is just a repo — a new machine is a two-liner:
+**The one-sentence way** (recommended once the [GitHub MCP
+connector](claude-ai-and-mobile.md) is set up — connectors are account-level, so
+they're already on the new machine; verified mid-2026, and if the connector tools
+don't appear in Claude Code there, the manual way below always works): open Claude
+Code there and say
+
+> *Bootstrap my brain: read `docs/bootstrap.md` from my `<your-brain-repo>` repo via
+> the GitHub connector and follow it.*
+
+Claude self-onboards — either **satellite** tier (connector-only, no git on the
+device; right for casual boxes) or **full** tier (clone + repo-scoped deploy key).
+Details: [bootstrap.md](bootstrap.md).
+
+**The manual way** — the brain is just a repo, so a full setup is a two-liner
+(assuming the machine already has GitHub auth):
 
 ```bash
 git clone git@github.com:<you>/<your-brain-repo>.git ~/claude-brain
@@ -38,6 +52,7 @@ Every surface is just a different transport to the same repo:
 | Surface | Transport | Read | Write |
 |---|---|---|---|
 | Claude Code (desktop) | local clone + `~/.claude/CLAUDE.md` | full | full (commit + push) |
+| Claude Code (satellite device) | GitHub MCP connector + [bootloader stub](bootstrap.md) | full | full (commits via connector) |
 | claude.ai web + mobile | GitHub MCP connector | full | full (commits via connector) |
 | Claude Code web | repo added to session | full | via `claude/` branches |
 | Any browser, worst case | github.com itself | full | GitHub's editor |
