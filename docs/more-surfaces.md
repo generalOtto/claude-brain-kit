@@ -26,7 +26,8 @@ bash ~/claude-brain/setup.sh
 `setup.sh` is idempotent and personalization is already done, so it just wires
 `~/.claude/CLAUDE.md` and the retention setting. Every Claude Code session on that
 machine now loads the brain. Keep machines honest with ordinary git: pull when you
-sit down, push when memories get written.
+sit down; writes push themselves the moment they're made (the worktree flow — see
+[how-it-works.md](how-it-works.md)).
 
 ## Claude Code web (claude.ai/code)
 
@@ -51,7 +52,7 @@ Every surface is just a different transport to the same repo:
 
 | Surface | Transport | Read | Write |
 |---|---|---|---|
-| Claude Code (desktop) | local clone + `~/.claude/CLAUDE.md` | full | full (commit + push) |
+| Claude Code (desktop) | local clone + `~/.claude/CLAUDE.md` | full | full (worktree → push to main) |
 | Claude Code (satellite device) | GitHub MCP connector + [bootloader stub](bootstrap.md) | full | full (commits via connector) |
 | claude.ai web + mobile | GitHub MCP connector | full | full (commits via connector) |
 | Claude Code web | repo added to session | full | via `claude/` branches |

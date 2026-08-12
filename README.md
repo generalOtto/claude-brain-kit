@@ -45,7 +45,8 @@ own brain.
    interview you — five minutes of questions, then it writes your identity notes,
    commits, and deletes its own setup instructions. You're live.
 5. **Just work.** When something durable comes up, Claude writes it down (or you say
-   *"remember this"*). Memories are commits; `git push` syncs them everywhere.
+   *"remember this"*). Memories are commits, pushed the moment they're made —
+   claude.ai and your phone see them live, other machines at their next pull.
 
 **Verify it worked:** open a fresh session and ask *"what do you know about me?"*
 
@@ -57,13 +58,15 @@ graph TD
     A -->|GitHub MCP connector| C[claude.ai web + phone app]
     A -->|git clone + setup.sh| D[Your other machines]
     B --> E[Recall: INDEX.md first,<br/>then only the matching notes]
-    B --> F[Writes: one small note<br/>+ index line + commit]
+    B --> F[Writes: one small note + index line,<br/>own worktree → pushed to main]
 ```
 
 The bootloader (`CLAUDE.md`) loads into every session and teaches Claude two
 protocols. **Recall:** skim `INDEX.md` (one line per note), open only what matches
 the task — so a growing brain never bloats your context. **Write:** when something
-durable is learned, save one small note, index it, commit it. Curated memory, not
+durable is learned, save one small note, index it, and publish it — each write lands
+in its own git worktree and is pushed to `main` immediately, so parallel sessions
+never clobber each other and nothing sits unpushed. Curated memory, not
 auto-captured noise — every note is one a human or Claude *decided* was worth
 keeping, and you can read all of them.
 
@@ -74,6 +77,7 @@ knowledge/     hard-won gotchas & durable facts
 conventions/   standing rules for how Claude works with you
 pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
+tools/         brain-write.sh — the concurrency-safe write flow (worktree → push)
 INDEX.md       the catalog recall runs on
 CLAUDE.md      the bootloader (protocols + who you are)
 ```

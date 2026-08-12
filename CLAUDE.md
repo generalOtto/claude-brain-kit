@@ -25,7 +25,8 @@ is brand new. Offer to set it up right now by interviewing your human:
    normally replaces them), fill them in with the name they gave you.
 5. **Delete this entire "FIRST-RUN SETUP" section from CLAUDE.md.**
 6. Commit everything: `git add -A && git commit -m "brain: first-run setup"`
-   — and push if a remote is configured.
+   — and push if a remote is configured. (Committing directly is fine for this
+   one-time setup; every write after it follows the Write protocol's worktree flow.)
 7. Tell them their brain is live, and that from now on you'll remember.
 
 Keep the interview light — 5 minutes, not an interrogation. They can always add
@@ -34,7 +35,7 @@ more later; the brain grows with use.
 ## Where the brain lives
 - Canonical store: this git repo (a **private** GitHub repo), cloned locally.
 - **Source of truth = the markdown files here.** Versioned in git → durable, offline-capable, restorable. No live service is required for the brain to work.
-- Sync: `git pull` in this repo at the start of a session when practical; commit + push after writing memories.
+- Sync: `git pull --ff-only` in this repo at the start of a session when practical; if offline writes are waiting (local `main` ahead of `origin/main`, or `pending-sync/*` branches), run `tools/brain-write.sh sync`. The clone is a **read cache** — never edit files in it directly; every write publishes through the worktree flow in the Write protocol below.
 
 ## Who {{YOUR_NAME}} is (always-true essentials)
 - See `identity/about-me.md` for who they are and `identity/how-we-work.md` for how we collaborate. Read both whenever the session is personal or strategic — they are small.
@@ -60,7 +61,7 @@ more later; the brain grows with use.
 When you learn something durable — a fact about {{YOUR_NAME}}, a decision, a project's state, a gotcha, a preference:
 1. Write/update the right note. Frontmatter: `name`, `description`, `type` (`user`|`feedback`|`project`|`reference`). **One fact per file**; link related notes with `[[name]]`.
 2. Add/update its one-line entry in `INDEX.md`.
-3. Commit with a clear message — and push when practical.
+3. Publish via the **worktree flow — never edit the shared clone directly** (two sessions on one device silently clobber each other): `wt=$(~/claude-brain/tools/brain-write.sh open)` → make the edits inside `$wt` → `~/claude-brain/tools/brain-write.sh publish "$wt" "message"`. This commits in isolation and **pushes straight to remote `main` immediately** — connector surfaces see it live, other clones at their next pull; offline, the write lands on local `main` for `sync` to push later. (Clone devices only — connector surfaces commit via the GitHub API, which is already atomic.) Why + details: `docs/how-it-works.md`.
 4. Don't record what a repo/codebase/git history already captures. Save what's **non-obvious and durable**.
 5. Update existing notes instead of creating near-duplicates; delete notes that turn out to be wrong.
 6. Big moments / end of a meaningful session → consider a dated `journal/` entry. This is how the relationship accumulates.

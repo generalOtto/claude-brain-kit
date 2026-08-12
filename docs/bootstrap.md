@@ -98,5 +98,7 @@ When unsure, ask: "satellite or full?"
 ### After bootstrap
 
 Every future session on this device loads the brain automatically (stub or clone).
-Keep honoring the write protocol so memories written here reach every other device —
-commits are the sync.
+Keep honoring the write protocol — on full-tier devices every write publishes through
+`tools/brain-write.sh` (own worktree → immediate push to `main`), so the remote — and
+every connector surface — has each memory the moment it's made; other clones catch up
+on their next pull.
