@@ -24,9 +24,10 @@ bash ~/claude-brain/setup.sh
 ```
 
 `setup.sh` is idempotent and personalization is already done, so it just wires
-`~/.claude/CLAUDE.md` and the retention setting. Every Claude Code session on that
-machine now loads the brain. Keep machines honest with ordinary git: pull when you
-sit down; writes push themselves the moment they're made (the worktree flow — see
+`~/.claude/CLAUDE.md`, the retention setting, and the session-start auto-sync hook.
+Every Claude Code session on that machine now loads the brain *and* freshens the
+clone on its own — writes push themselves the moment they're made, and sessions open
+knowing whether the clone is fresh (the worktree flow + hook — see
 [how-it-works.md](how-it-works.md)).
 
 ## Claude Code web (claude.ai/code)
@@ -45,6 +46,24 @@ Some cloud environments can't clone a private repo at all. If the GitHub MCP
 connector is available there, use the same pattern as [claude.ai and
 mobile](claude-ai-and-mobile.md): read `INDEX.md` first via the connector, open
 matching notes, write memories as real commits.
+
+## Obsidian as a viewer (optional)
+
+The brain doubles as a perfectly ordinary [Obsidian](https://obsidian.md) vault — the
+notes use frontmatter and `[[wikilinks]]`, so opening the clone as a vault gives you
+graph view, backlinks, and comfortable human reading for free. If you want to
+hand-edit through it:
+
+- **Open the clone as the vault** (e.g. `~/claude-brain`) — no copy, no export.
+- **Use the community Obsidian Git plugin** for your hand-edits (commit-and-sync with
+  rebase pull). That's the *human* edit path; Claude's writes keep going through the
+  worktree flow, and the two coexist because both end in pushes to `main`.
+- The kit's `.gitignore` already excludes the parts of `.obsidian/` that shouldn't
+  sync (workspace state, plugin runtime data — plugin data files can hold tokens).
+  Committing your `.obsidian` app settings and theme is fine if you want the same
+  viewer everywhere.
+
+Strictly optional — the brain never depends on it, and Claude never writes through it.
 
 ## One brain, many surfaces — the mental model
 

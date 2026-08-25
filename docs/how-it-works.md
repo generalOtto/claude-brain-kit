@@ -88,6 +88,52 @@ Two reasons, both earned the hard way:
 Connector surfaces (claude.ai, the phone app, satellite devices) don't need any of
 this: their writes are GitHub API commits, which are already atomic on the remote.
 
+## Session start: the clone freshens itself
+
+Writes push themselves the moment they're made — but *reads* need the clone to be
+fresh, and "pull when you sit down" is a habit that fails silently. So `setup.sh`
+installs a Claude Code **SessionStart hook** (`tools/brain-session-start.sh`): when a
+session starts, it fast-forward-pulls the clone and injects exactly one status line
+into Claude's context —
+
+- `brain: fresh` / `brain: pulled N new commit(s)` — normal cases
+- `brain: pull FAILED (offline or diverged) — clone may be STALE` — Claude knows not
+  to trust the clone blindly
+- `… UNPUSHED writes waiting … — run tools/brain-write.sh sync` — offline writes are
+  parked; sync once you're online
+
+Design constraints, in case you're auditing it: it **always exits 0** (a brain problem
+must never break session start), it **can't hang** (no terminal prompts, bounded ssh
+connect, a 15 s timeout where coreutils provides one), it's **report-only** beyond the
+pull (never auto-syncs, never touches worktrees), and it **never dumps note content**
+into context — recall stays index-first. The hook matcher is `startup|clear`, not
+`resume`, so resuming a session doesn't pay pull latency.
+
+## Mechanisms that ride on conversations (still no scheduler)
+
+Claude can't run on a schedule without an always-on machine — and this system runs no
+servers. The kit's answer: intermittent behavior rides on sessions that already
+happen, as conventions the bootloader loads every time. Three ship enabled:
+
+- **The to-do list** (`TODO.md` + `conventions/todo-list.md`) — one list for chores,
+  reminders, and follow-ups. At most once a day, *after* handling what you actually
+  asked, Claude surfaces a compact digest of what's due; "todos" opens the list any
+  time, and "remind me to X" on any surface files an item. Hard deadlines get bridged
+  to a real alarm — the mechanism is honest about being probabilistic.
+- **Idea capture** (`ideas/` + `conventions/idea-capture.md`) — say "idea: …" on any
+  surface and it's filed to `ideas/<category>/<slug>.md` in your words, confirmed in
+  one line. Capture must be cheaper than forgetting.
+- **The living profile** (`identity/profile.md` + `conventions/profile-evaluation.md`)
+  — when a session produces hard evidence about who you are or how you work, Claude
+  appends a dated one-liner to an evidence log and tells you (`profiled → …` — your
+  veto point). Every ~10 entries it offers a consolidation pass that distills the log
+  into a portrait. Strict evidence rules keep it honest: only your words, decisions,
+  and credentials count — never how projects are implemented (that's mostly Claude's
+  authorship), and never knowledge Claude itself explained to you.
+
+Each is a couple of markdown files plus a bootloader section — delete its files and
+its bootloader section and the mechanism is gone, nothing else to uninstall.
+
 ## The recall discipline
 
 The bootloader teaches Claude a strict order:

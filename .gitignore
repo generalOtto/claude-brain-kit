@@ -15,3 +15,9 @@ secrets.env
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Obsidian viewer (optional) — device-local state and plugin runtime data (can hold
+# tokens), never synced. See docs/more-surfaces.md, "Obsidian as a viewer".
+.obsidian/workspace*.json
+.obsidian/plugins/*/data.json
+.obsidian/cache

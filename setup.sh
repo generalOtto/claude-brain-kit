@@ -110,7 +110,42 @@ else:
     print("✓ cleanupPeriodDays already >= 3650")
 PY
 
-# ── 4. Optional: gitleaks pre-commit hook ──────────────────────────────────────
+# ── 4. SessionStart auto-sync hook ─────────────────────────────────────────────
+# Auto-pulls this clone when a Claude Code session starts and injects a one-line
+# status (fresh / pulled N / STALE / unpushed offline writes) into Claude's context —
+# so no session trusts a stale brain. Idempotent merge into settings.json; report-only
+# (never syncs or touches worktrees), always exits 0, hard-bounded so it can't hang.
+SETTINGS="${CLAUDE_DIR}/settings.json" BRAIN_DIR="${BRAIN_DIR}" python3 - <<'PY'
+import json, os
+p = os.environ["SETTINGS"]
+brain = os.environ["BRAIN_DIR"]
+home = os.path.expanduser("~")
+# Prefer a $HOME-relative command (expanded by the shell at hook runtime) so
+# settings.json survives home-dir renames; fall back to the absolute path.
+# Double-quoted so paths with spaces survive the shell ($HOME expands in quotes).
+if brain == home or brain.startswith(home + os.sep):
+    brain = "$HOME" + brain[len(home):]
+cmd = '"' + brain + '/tools/brain-session-start.sh"'
+d = json.load(open(p)) if os.path.exists(p) else {}
+if not isinstance(d.get("hooks"), dict):
+    d["hooks"] = {}
+if not isinstance(d["hooks"].get("SessionStart"), list):
+    d["hooks"]["SessionStart"] = []
+matchers = d["hooks"]["SessionStart"]
+if any("brain-session-start.sh" in h.get("command", "")
+       for m in matchers if isinstance(m, dict)
+       for h in m.get("hooks", []) if isinstance(h, dict)):
+    print("✓ SessionStart brain-sync hook already installed")
+else:
+    matchers.append({"matcher": "startup|clear",
+                     "hooks": [{"type": "command", "command": cmd, "timeout": 30}]})
+    tmp = p + ".tmp"
+    json.dump(d, open(tmp, "w"), indent=2)
+    os.replace(tmp, p)
+    print("✓ SessionStart brain-sync hook installed in", p)
+PY
+
+# ── 5. Optional: gitleaks pre-commit hook ──────────────────────────────────────
 HOOK="${BRAIN_DIR}/.git/hooks/pre-commit"
 if command -v gitleaks >/dev/null 2>&1; then
   if [ ! -e "${HOOK}" ]; then

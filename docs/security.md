@@ -65,6 +65,15 @@ key from gitleaks). GitHub's own push protection for private repos ("Secret
 Protection") is a paid product — gitleaks covers you at $0; consider the paid layer
 optional hardening.
 
+**The shipped `.gitleaks.toml` goes beyond stock rules.** Markdown notes leak secrets
+in a shape the default ruleset doesn't look for: a backticked password in a table row
+or callout. The kit's config adds custom rules for exactly that — a labeled backticked
+value after "password/secret/api key", bare 32/64-char hex strings, htpasswd hashes,
+and common self-hosting token shapes — with narrow allowlists so password-manager
+*item names* ("→ password manager item `garden-dashboard`") and env-var *names* don't
+false-positive. Stock scanners are tuned for source code; these rules cover the way
+notes actually leak.
+
 **If a secret does land in history:** rotate the credential first (assume exposed),
 then rewrite history if you care to (`git filter-repo`) — rotation is the part that
 actually matters.

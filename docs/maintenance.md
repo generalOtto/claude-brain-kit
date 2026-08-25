@@ -10,9 +10,10 @@ is minutes, not projects. Most of it Claude does for you if the protocols hold.
 note starts covering two things, split it. Small notes are what make index-first
 recall work.
 
-**The index never lies.** Every note has exactly one line in `INDEX.md`, and the
-description is what recall runs on — write it as *"when would someone need this?"*,
-not a vague title. New note without an index line = invisible note.
+**The index never lies.** Every note has exactly one line in `INDEX.md` (exception:
+`ideas/` is indexed one line per category, not per idea), and the description is what
+recall runs on — write it as *"when would someone need this?"*, not a vague title.
+New note without an index line = invisible note.
 
 **Update, don't duplicate.** Before writing a note, check whether one already covers
 it. The write protocol says update in place; git history preserves the old version,
@@ -23,6 +24,12 @@ Deleting is safe (git remembers) and keeps trust in the brain absolute.
 
 **Journal the days that mattered.** Not every session — milestones, big decisions,
 good days. The journal is where the *relationship* accumulates, not just the facts.
+
+**Let the list and the log breathe.** `TODO.md` stays trustworthy when done items
+actually move to the done log and stale `next:` dates get re-aimed — say "todos" and
+tidy in ten seconds. The profile's evidence log is designed to be consolidated (~10
+entries): when Claude offers the pass, take it — that's the moment raw evidence
+becomes a portrait you'd actually endorse.
 
 ## Periodic consolidation (monthly-ish, or when it feels cluttered)
 

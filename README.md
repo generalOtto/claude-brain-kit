@@ -20,8 +20,14 @@ own brain.
 - 📱 **Every Claude surface** — Claude Code on your machines, plus claude.ai in the
   browser and the phone app via the GitHub MCP connector: your phone chat can recall
   your notes and commit new memories.
+- 🗓️ **A to-do list, idea inbox, and living profile — with zero infrastructure** —
+  AI-mediated mechanisms that ride your conversations instead of a scheduler: a
+  once-a-day digest of due chores ("remind me to X" files an item from any surface),
+  zero-friction idea capture ("idea: …" → filed in one line), and an evidence-based
+  profile that grows as you work — with a veto announcement on every capture.
 - 🔐 **A real secrets policy** — the brain stores *pointers* to credentials, never
-  values, enforced three ways (gitignore, optional pre-commit hook, gitleaks CI).
+  values, enforced three ways (gitignore, optional pre-commit hook, gitleaks CI) —
+  including custom rules for the markdown-shaped leaks stock scanners miss.
 - 🧾 **Zero infrastructure** — recall is an index file and small notes, not a vector
   database. Everything is human-readable markdown with git history. If you stop
   using it tomorrow, you keep a perfectly readable archive of your work and life.
@@ -40,7 +46,8 @@ own brain.
    ```
    Personalizes the templates, wires the brain into `~/.claude/CLAUDE.md` (via a
    one-line `@import` stub — or `--symlink` if you prefer), raises Claude Code's
-   transcript retention, and offers a gitleaks pre-commit hook.
+   transcript retention, installs a session-start hook that auto-pulls the brain and
+   tells Claude whether the clone is fresh, and offers a gitleaks pre-commit hook.
 4. **Start any Claude Code session.** Claude notices the brain is new and offers to
    interview you — five minutes of questions, then it writes your identity notes,
    commits, and deletes its own setup instructions. You're live.
@@ -75,9 +82,11 @@ identity/      who you are & how you like to work   (loads when relevant)
 projects/      one mission-control note per project
 knowledge/     hard-won gotchas & durable facts
 conventions/   standing rules for how Claude works with you
+ideas/         idea seeds, filed by category the moment you say "idea: …"
 pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
-tools/         brain-write.sh — the concurrency-safe write flow (worktree → push)
+tools/         brain-write.sh (concurrency-safe writes) + the session-start sync hook
+TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"
 INDEX.md       the catalog recall runs on
 CLAUDE.md      the bootloader (protocols + who you are)
 ```
@@ -110,8 +119,10 @@ the brain holds you.
 **What does it cost?** $0. Free GitHub private repo, free CI scan, no services.
 
 **Windows?** Use the default `@import` stub (no symlink, no Developer Mode needed)
-and run `setup.sh` under Git Bash or WSL — or do the two setup steps by hand: put
-`@C:/path/to/your-brain/CLAUDE.md` in `~/.claude/CLAUDE.md` and you're wired.
+and run `setup.sh` under Git Bash or WSL — or do the key step by hand: put
+`@C:/path/to/your-brain/CLAUDE.md` in `~/.claude/CLAUDE.md` and you're wired. (The
+session-start sync hook is a bash script — on native Windows without Git Bash, skip
+it and pull manually.)
 
 **Does my brain repo run these GitHub Actions?** Just one: a gitleaks scan on every
 push, as a secrets backstop. Delete `.github/workflows/gitleaks.yml` if you don't

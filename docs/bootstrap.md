@@ -89,7 +89,8 @@ When unsure, ask: "satellite or full?"
    bash ~/claude-brain/setup.sh
    ```
    (`setup.sh` is idempotent: `~/.claude/CLAUDE.md` stub/symlink + retention
-   setting; personalization already happened on the first machine.)
+   setting + the session-start auto-sync hook; personalization already happened on
+   the first machine.)
 5. Set the commit identity in that clone: `git config user.name` / `user.email` —
    ask your human (the name may be in `identity/about-me.md`; an email usually
    isn't).

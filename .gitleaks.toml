@@ -3,3 +3,46 @@
 # secret material and passes the default rules untouched.
 [extend]
 useDefault = true
+
+# --- custom rules beyond the defaults ---
+# Real-world note repos leak secrets in a shape the default ruleset doesn't look
+# for: backticked values in markdown tables and callouts. These rules cover that
+# shape, plus a few common self-hosting token formats.
+# Note: gitleaks uses Go RE2 — no lookaheads.
+
+[[rules]]
+id = "md-credential-label-value"
+description = "Token-like backticked value (8+ chars) right after a password/secret/api-key label"
+regex = '''(?i)(password|passphrase|api ?key|token secret|secret)[^`\n]{0,20}`[A-Za-z0-9_@:!#%^&+=$|.-]{8,}`'''
+[rules.allowlist]
+regexTarget = "line"
+regexes = [
+  '''`[A-Z][A-Z0-9_]{3,}`''',                         # ALL-CAPS env-var / placeholder names
+  '''(?i)(password manager|bitwarden|1password|keepass|vaultwarden)\s+(item|entry|record)''',  # pointer phrasing: "→ password manager item `name`"
+  '''`[A-Za-z0-9_.-]*\.(env|conf|md|py|json|yml|toml|gitignore|gitleaks)[a-z.]*`''',  # backticked filenames/dotfiles
+]
+
+[[rules]]
+id = "md-backticked-hex-key"
+description = "Bare 32/64-char hex string in backticks (API-key shaped; labeled identifier/checksum values excluded)"
+regex = '''`[a-fA-F0-9]{32}`|`[a-fA-F0-9]{64}`'''
+[rules.allowlist]
+regexTarget = "line"
+regexes = [
+  '''(?i)(zone|account|tunnel|app|uuid|guid|sha\d*|md5|checksum|hash|digest|item ?id)[^`\n]{0,20}`[a-fA-F0-9]{32}([a-fA-F0-9]{32})?`''',
+]
+
+[[rules]]
+id = "htpasswd-hash"
+description = "htpasswd / crypt password hashes (apr1, bcrypt)"
+regex = '''\$(apr1|2[aby])\$[./A-Za-z0-9$]{20,}'''
+
+[[rules]]
+id = "cloudflare-api-token"
+description = "Cloudflare API token (cfut_ user / cfat_ account prefixes)"
+regex = '''cf[ua]t_[A-Za-z0-9]{30,}'''
+
+[[rules]]
+id = "sanctum-style-api-key"
+description = "Laravel Sanctum style API key (digit|base62) — common in self-hosted web apps"
+regex = '''\b\d\|[A-Za-z0-9]{35,}'''
