@@ -82,6 +82,10 @@ the break stays invisible (ask us how we know). A real test demands file content
 
 ## Known limits
 
+- **Voice mode can't read through this connector** — it currently drops the
+  file-content ("embedded resource") parts of the GitHub connector's replies, so
+  Claude hears that notes exist but not what they say. The fix is a tiny MCP server
+  of your own: see [Voice mode](voice.md).
 - The connector ecosystem is still young — expect occasional flakiness. The failure
   mode is inconvenience, never data loss: your repo and desktop path don't depend on
   it, and the GitHub mobile app can read/edit any note as a fallback.

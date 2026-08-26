@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "voice-brain-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-01",
+  // No request logging anywhere, by design — logs would record the
+  // secret-bearing URL of every request. Keep Workers Logs off.
+  "observability": { "enabled": false },
+  "workers_dev": true,
+  "preview_urls": false
+  // No routes here by design: an (optional) custom domain is attached once in
+  // the Cloudflare dashboard or API and SURVIVES routes-less deploys —
+  // verified 2026-08-26. Keeping it out of the config means the same file
+  // works for every deployer.
+  // Secrets (never here): GITHUB_TOKEN, MCP_PATH_SECRET, BRAIN_REPO
+  // ("owner/name" of the brain repo), optional AUTH_HEADER_TOKEN — all set
+  // with `wrangler secret put <NAME>` (setup.sh does this for you).
+}

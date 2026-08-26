@@ -20,6 +20,10 @@ own brain.
 - 📱 **Every Claude surface** — Claude Code on your machines, plus claude.ai in the
   browser and the phone app via the GitHub MCP connector: your phone chat can recall
   your notes and commit new memories.
+- 🎙️ **Voice mode too** — an optional tiny MCP server of your own (`tools/voice-brain/`,
+  deployed free on Cloudflare Workers in one command) gives voice chats full recall
+  and protocol-true writes: atomic note+index commits with guardrails, from any
+  connector surface.
 - 🗓️ **A to-do list, idea inbox, and living profile — with zero infrastructure** —
   AI-mediated mechanisms that ride your conversations instead of a scheduler: a
   once-a-day digest of due chores ("remind me to X" files an item from any surface),
@@ -85,7 +89,8 @@ conventions/   standing rules for how Claude works with you
 ideas/         idea seeds, filed by category the moment you say "idea: …"
 pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
-tools/         brain-write.sh (concurrency-safe writes) + the session-start sync hook
+tools/         brain-write.sh (concurrency-safe writes), the session-start sync hook,
+               and voice-brain/ (the optional voice/connector MCP server)
 TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"
 INDEX.md       the catalog recall runs on
 CLAUDE.md      the bootloader (protocols + who you are)
@@ -98,6 +103,7 @@ Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
 | Guide | What it unlocks |
 |---|---|
 | [claude.ai + mobile](docs/claude-ai-and-mobile.md) | The same brain in browser chats and the phone app — read *and write* — via the GitHub MCP connector (plus the two traps: the read-only integration, and the authorized-but-not-installed 404) |
+| [Voice mode](docs/voice.md) | Your own free MCP server (one command, Cloudflare Workers) — full recall in voice mode, which the GitHub connector can't do, plus atomic guarded writes from every connector surface |
 | [One-sentence onboarding](docs/bootstrap.md) | Add any new device by saying one sentence — Claude reads the setup instructions *from the brain itself* and self-onboards (connector-only "satellite" tier, or full clone via a repo-scoped deploy key) |
 | [More surfaces](docs/more-surfaces.md) | Second machine; Claude Code web; cloud sessions |
 | [Maintenance](docs/maintenance.md) | The habits + a monthly consolidation prompt that keep the brain trustworthy |
@@ -107,7 +113,8 @@ Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
 
 **Is my data private?** The brain lives in *your* private repo under *your* account.
 This template contains no telemetry, no service, no third party — the only parties
-are you, GitHub, and whatever Claude surfaces you connect.
+are you, GitHub, and whatever Claude surfaces you connect (plus Cloudflare, only if
+you opt into the voice server).
 
 **How is this different from Claude's built-in memory?** Complementary, not
 competing. Claude Code's auto-memory is scoped to one project on one machine, and
@@ -116,7 +123,9 @@ one identity, every project, every machine, every surface — in files you own, 
 read, and can take with you. Keep auto-memory on; it handles project minutiae while
 the brain holds you.
 
-**What does it cost?** $0. Free GitHub private repo, free CI scan, no services.
+**What does it cost?** $0. Free GitHub private repo, free CI scan, no required
+services — the optional voice server also fits comfortably in Cloudflare Workers'
+free tier.
 
 **Windows?** Use the default `@import` stub (no symlink, no Developer Mode needed)
 and run `setup.sh` under Git Bash or WSL — or do the key step by hand: put
@@ -124,9 +133,10 @@ and run `setup.sh` under Git Bash or WSL — or do the key step by hand: put
 session-start sync hook is a bash script — on native Windows without Git Bash, skip
 it and pull manually.)
 
-**Does my brain repo run these GitHub Actions?** Just one: a gitleaks scan on every
-push, as a secrets backstop. Delete `.github/workflows/gitleaks.yml` if you don't
-want it (not recommended).
+**Does my brain repo run these GitHub Actions?** Two: a gitleaks scan on every push
+as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't want
+it — not recommended), and the voice-brain test suite, which only runs when you
+touch `tools/voice-brain/`.
 
 **A friend shared this with me — where do I start?** Right at [Quickstart](#quickstart).
 The whole point is that step 4 explains the system *to you, in conversation*.
