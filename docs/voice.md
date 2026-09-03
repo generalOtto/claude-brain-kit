@@ -103,6 +103,10 @@ traffic is a rounding error against that. GitHub API usage is far below any limi
   config is deliberately routes-less — a dashboard/API-attached custom domain
   survives every later deploy (verified), so the same `wrangler.jsonc` works for
   everyone.
+- **Cloudflare's official MCP server (optional):** add `https://mcp.cloudflare.com/mcp`
+  (OAuth — no API token to mint) to Claude Code or claude.ai and Claude can do the
+  dashboard/API steps above — custom domains, DNS records — for you. It's an
+  account-wide grant, so add it where you do ops, not on every surface.
 - **When Anthropic fixes voice resource-unwrapping**, reads could move back to the
   GitHub connector — but the write path (atomic, guarded, protocol-true) stays
   valuable on every connector surface regardless. Re-test occasionally: in voice,
