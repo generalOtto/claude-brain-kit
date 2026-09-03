@@ -28,7 +28,8 @@ device using one of the two tiers below.
 
 - **Satellite** (default): secondary/casual machines — a gaming box, a family
   computer, a short-lived VM. No git, no keys, no clone; the GitHub MCP connector
-  does everything.
+  does everything (plus the optional Voice Brain connector, preferred for writes —
+  `docs/voice.md`).
 - **Full**: primary work machines. Local clone + `setup.sh`. Choose when local
   search over the notes, offline access, or git-based workflows matter here.
   (Satellite upgrades to Full at any time — just do Full's steps later.)
@@ -52,8 +53,11 @@ When unsure, ask: "satellite or full?"
    - **Recall:** via the GitHub MCP connector, read the repo's INDEX.md first, then
      open only the notes matching the task. Read its CLAUDE.md when protocol details
      matter. The brain wins over assumptions.
-   - **Write:** when something durable is learned, commit it through the connector,
-     following the repo CLAUDE.md write protocol (one small note + INDEX line).
+   - **Write:** when something durable is learned, use the Voice Brain connector's
+     `brain_write` / `brain_append` if it's on this surface — protocol-true: one atomic
+     commit carrying the note AND its INDEX line (see `docs/voice.md`). Otherwise commit
+     through the GitHub connector, following the repo CLAUDE.md write protocol (one
+     small note + INDEX line).
    - **Secrets:** NEVER store secret values in the brain — pointers only.
    - This is a satellite device (no local clone). Full instructions: repo
      `docs/bootstrap.md`.
