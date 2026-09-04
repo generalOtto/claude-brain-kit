@@ -79,4 +79,29 @@ printf 'not json at all {{{ "brain_dir": ' > "$HOME/.claude/settings.json"
 export BRAIN_DIR="$SB/brain"; out=$(run_hook); assert_contains "$out" "brain: fresh" "garbage settings.json still yields a status line"; run_hook >/dev/null; assert_rc $? 0 "garbage settings.json exits 0"
 t_teardown
 
+# concurrency (dogfood 2026-09-04): two hooks on one clone — a second session, or the legacy settings.json
+# hook next to the plugin — must not report STALE; `git pull` did (interleaved FETCH_HEAD).
+t_setup; retention 3650; other_push 2
+out=$( (run_hook | sed 's/^/A /') & (run_hook | sed 's/^/B /') & wait )
+assert_lacks "$out" "STALE" "two hooks at once: no false STALE"
+assert_contains "$out" "pulled 2 new commit(s)" "two hooks at once: one of them pulled"
+t_teardown
+
+# lock races are retried once: a transient index.lock (fast-forward) and a transient ref lock (fetch)
+t_setup; retention 3650; other_push 1
+touch "$SB/brain/.git/index.lock"; (sleep 0.5; rm -f "$SB/brain/.git/index.lock") &
+out=$(run_hook); assert_contains "$out" "pulled 1 new commit(s)" "transient index.lock: retry pulls"
+wait
+other_push 1; mkdir -p "$SB/brain/.git/refs/remotes/origin"
+touch "$SB/brain/.git/refs/remotes/origin/main.lock"; (sleep 0.5; rm -f "$SB/brain/.git/refs/remotes/origin/main.lock") &
+out=$(run_hook); assert_contains "$out" "pulled 1 new commit(s)" "transient ref lock: fetch retry pulls"
+wait
+t_teardown
+
+# diverged (local commit + remote commit) is still reported, never merged
+t_setup; retention 3650; echo y > "$SB/brain/mine.md"; git -C "$SB/brain" add -A; git -C "$SB/brain" commit -qm mine; other_push 1
+out=$(run_hook); assert_contains "$out" "STALE" "diverged is STALE"
+assert_eq "$(git -C "$SB/brain" rev-list --count HEAD)" "2" "diverged clone left untouched"
+t_teardown
+
 t_report
