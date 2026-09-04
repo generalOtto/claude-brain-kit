@@ -6,7 +6,7 @@ argument-hint: "[go|later|mute|done|add …]"
 
 # /brain:todos $ARGUMENTS
 
-Clone: `${user_config.brain_dir}`. Read `TODO.md` and `conventions/todo-list.md` there —
+Clone: run `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` to get the path. Read `TODO.md` and `conventions/todo-list.md` there —
 the convention is the rulebook (item format, the daily check, responses, the
 hard-deadline bridge); this skill only adds the Claude Code mechanics:
 

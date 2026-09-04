@@ -5,7 +5,7 @@ description: Record something durable in the brain — a fact about the user, a 
 
 # Brain write (the worktree flow)
 
-Clone: `${user_config.brain_dir}` (the plugin puts `brain-write.sh` on PATH).
+Clone: run `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` to get the path (the plugin puts `brain-write.sh` on PATH).
 
 1. Decide the note: update an existing one when it exists (grep `INDEX.md` and the
    folder first — no near-duplicates), else create `<folder>/<kebab-slug>.md` with

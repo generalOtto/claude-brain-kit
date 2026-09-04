@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Edit, Write
 
 # /brain:setup — wire this machine to the brain
 
-Brain clone (from the plugin's `brain_dir` option): `${user_config.brain_dir}`
+Brain clone: the path printed by `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` (it reads the plugin's `brain_dir` option; run it first and use that path everywhere below).
 Shared checks: `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` prints the clone
 path the hook will use; `… --check-wired` says whether the bootloader is wired.
 Run every step, report each as `✓ done` / `· already fine` / `⚠ needs you`, never

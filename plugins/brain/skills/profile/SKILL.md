@@ -6,7 +6,7 @@ user-invocable: false
 
 # Profile evidence capture
 
-Clone: `${user_config.brain_dir}`. Follow `conventions/profile-evaluation.md` there (the
+Clone: run `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` to get the path. Follow `conventions/profile-evaluation.md` there (the
 evidence rules, incl. the knowledge-provenance exclusion). Append one dated line to the
 `## Evidence log` in `identity/profile.md` through the `brain:write` skill and reply with
 one line: `profiled → <what was noted>`. Deductions happen only in the consolidation
