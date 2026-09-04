@@ -1,0 +1,21 @@
+{
+  "name": "claude-brain-kit",
+  "description": "Your Claude, the same collaborator on every device — a git-backed personal brain. Plugins: brain (session sync, writes, skills) and brain-voice (Voice Brain MCP).",
+  "owner": { "name": "claude-brain-kit" },
+  "plugins": [
+    {
+      "name": "brain",
+      "source": "./plugins/brain",
+      "description": "Session-start auto-pull of your brain clone, concurrency-safe writes (brain-write.sh), and the /brain:setup, /brain:todos, /brain:idea, write and profile skills.",
+      "version": "1.0.0",
+      "category": "productivity"
+    },
+    {
+      "name": "brain-voice",
+      "source": "./plugins/brain-voice",
+      "description": "Registers your self-hosted Voice Brain MCP server (tools/voice-brain) in Claude Code. Install only if `claude mcp list` does not already show it.",
+      "version": "1.0.0",
+      "category": "productivity"
+    }
+  ]
+}

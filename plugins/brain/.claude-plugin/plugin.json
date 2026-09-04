@@ -1,0 +1,17 @@
+{
+  "name": "brain",
+  "version": "1.0.0",
+  "description": "Git-backed personal brain for Claude Code: session-start auto-pull, concurrency-safe writes, and the to-do / idea / profile mechanisms as skills.",
+  "author": { "name": "claude-brain-kit" },
+  "homepage": "https://github.com/generalOtto/claude-brain-kit",
+  "license": "MIT",
+  "userConfig": {
+    "brain_dir": {
+      "type": "directory",
+      "title": "Brain clone",
+      "description": "Local clone of your private brain repo (default ~/claude-brain).",
+      "default": "~/claude-brain",
+      "required": true
+    }
+  }
+}
