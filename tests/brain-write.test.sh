@@ -60,4 +60,12 @@ export CLAUDE_PLUGIN_OPTION_BRAIN_DIR="$SB/brain"; wt=$(W open); assert_eq "$([ 
 t_teardown
 t_setup; W bogus >/dev/null 2>&1; assert_rc $? 2 "usage exit 2"; t_teardown
 
+# resolution via settings.json pluginConfigs (this script's own copy of the ladder, under pipefail)
+t_setup; unset BRAIN_DIR
+printf '{\n  "pluginConfigs": {\n    "other@x": { "options": { "brain_dir": "/wrong" } },\n    "brain@claude-brain-kit": { "options": { "brain_dir": "%s" } }\n  }\n}\n' "$SB/brain" > "$HOME/.claude/settings.json"
+wt=$(W open); assert_eq "$([ -d "$wt" ] && echo yes)" "yes" "resolve via settings.json"; W publish "$wt" "noop" 2>/dev/null
+t_teardown
+
+t_setup; BRAIN_DIR="$SB/nope" W open >/dev/null 2>&1; assert_rc $? 1 "missing dir exits 1"; t_teardown
+
 t_report

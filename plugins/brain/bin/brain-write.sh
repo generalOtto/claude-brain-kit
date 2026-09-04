@@ -27,13 +27,14 @@ normpath() {
 resolve_brain() {
   local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
   if [ -z "$d" ] && [ -f "$s" ]; then
-    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1); d=${d//\\\\/\\}
+    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1 || true); d=${d//\\\\/\\}
   fi
   if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then d="$HOME/claude-brain"; fi
   [ -n "$d" ] || return 1
   normpath "$d"
 }
 BRAIN=$(resolve_brain) || { echo "brain-write.sh: no brain clone found (looked at BRAIN_DIR, the plugin's brain_dir option, settings.json pluginConfigs, ~/claude-brain)" >&2; exit 1; }
+[ -d "$BRAIN" ] || { echo "brain-write.sh: $BRAIN does not exist" >&2; exit 1; }
 git -C "$BRAIN" rev-parse --git-dir >/dev/null 2>&1 || { echo "brain-write.sh: $BRAIN is not a git repo" >&2; exit 1; }
 
 online()     { git -C "$BRAIN" ls-remote --exit-code origin main >/dev/null 2>&1; }

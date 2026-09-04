@@ -41,7 +41,7 @@ path_eq() {                        # case-insensitive on Windows
 resolve_brain() {
   local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
   if [ -z "$d" ] && [ -f "$s" ]; then
-    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1)
+    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1 || true)
     d=${d//\\\\/\\}                # JSON-escaped backslashes
   fi
   if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then
