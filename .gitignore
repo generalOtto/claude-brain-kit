@@ -21,3 +21,6 @@ Thumbs.db
 .obsidian/workspace*.json
 .obsidian/plugins/*/data.json
 .obsidian/cache
+
+# local dev plans (never shipped)
+docs/superpowers/
