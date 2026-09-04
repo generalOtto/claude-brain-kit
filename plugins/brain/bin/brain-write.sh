@@ -20,6 +20,7 @@ set -euo pipefail
 
 normpath() {
   local p="$1"
+  # shellcheck disable=SC2088  # matching a literal leading tilde is the point
   case "$p" in "~") p="$HOME" ;; "~/"*) p="$HOME/${p#\~/}" ;; esac
   if command -v cygpath >/dev/null 2>&1; then p=$(cygpath -u "$p" 2>/dev/null || printf '%s' "$p"); else p=${p//\\//}; fi
   printf '%s' "${p%/}"

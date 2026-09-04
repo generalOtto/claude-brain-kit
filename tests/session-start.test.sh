@@ -63,6 +63,7 @@ run_hook --resolve >/dev/null; assert_rc $? 1 "--resolve exits 1 when none"
 t_teardown
 
 t_setup; retention 3650
+# shellcheck disable=SC2088  # the literal ~ is what the script must expand
 assert_eq "$(BRAIN_DIR='~/brain-tilde' bash -c 'mkdir -p ~/brain-tilde; git -C ~/brain-tilde init -q; bash "$0" --resolve' "$HOOK")" "$HOME/brain-tilde" "tilde expansion"
 t_teardown
 
