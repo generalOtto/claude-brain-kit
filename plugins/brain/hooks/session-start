@@ -86,7 +86,18 @@ export GIT_SSH_COMMAND="ssh -oBatchMode=yes -oConnectTimeout=5"
 TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
 
 before=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
-upstream=$(git -C "$BRAIN" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo origin/main)
+# -q --verify: with an upstream configured but its remote-tracking ref missing, plain rev-parse prints the
+# literal '@{u}' on stdout and exits 128 — $upstream became two lines and every ff failed (permanent false STALE).
+upstream=$(git -C "$BRAIN" rev-parse -q --verify --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null); upstream=${upstream:-origin/main}
+head_branch=$(git -C "$BRAIN" symbolic-ref -q --short HEAD 2>/dev/null)
+gitdir=$(git -C "$BRAIN" rev-parse --absolute-git-dir 2>/dev/null)   # --git-dir prints a relative ".git"
+# Never move HEAD when the clone is not on the upstream's branch or an operation is in progress
+# (`pull --ff-only` refused these; `merge --ff-only` does not) — then the hook is report-only.
+clone_ready() {
+  [ -n "$head_branch" ] && [ "$head_branch" = "${upstream#*/}" ] || return 1
+  local f; for f in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD; do [ -e "$gitdir/$f" ] && return 1; done
+  return 0
+}
 # fetch, then fast-forward from the remote-tracking ref — NOT `git pull`: two sessions starting at once
 # (or a second hook on the same clone) interleave their writes to .git/FETCH_HEAD and pull aborts with
 # "Cannot fast-forward to multiple branches" although both fetches succeeded (seen on Windows, 2026-09-04).
@@ -97,15 +108,22 @@ gfetch() {                         # $1 = seconds budget
   if [ -n "$TIMEOUT_BIN" ]; then "$TIMEOUT_BIN" -k 5 "$1" git -C "$BRAIN" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch --quiet >/dev/null 2>&1
   else git -C "$BRAIN" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 fetch --quiet >/dev/null 2>&1; fi
 }
-ff() { git -C "$BRAIN" merge --ff-only --quiet "$upstream" >/dev/null 2>&1; }
-fetch_ok=false; pull_ok=false; t0=$SECONDS
+ff() {
+  if [ -n "$TIMEOUT_BIN" ]; then "$TIMEOUT_BIN" -k 2 5 git -C "$BRAIN" merge --ff-only --quiet "$upstream" >/dev/null 2>&1
+  else git -C "$BRAIN" merge --ff-only --quiet "$upstream" >/dev/null 2>&1; fi
+}
+fetch_ok=false; pull_ok=false; skipped=false; t0=$SECONDS
 gfetch 15 && fetch_ok=true
 if ! $fetch_ok && [ $((SECONDS - t0)) -lt 10 ]; then sleep 1; gfetch 5 && fetch_ok=true; fi
 if $fetch_ok; then
-  ff && pull_ok=true
-  if ! $pull_ok; then sleep 1; ff && pull_ok=true; fi
+  if clone_ready; then
+    ff && pull_ok=true
+    if ! $pull_ok; then sleep 1; ff && pull_ok=true; fi
+  else skipped=true; fi
 fi
-if $pull_ok; then
+if $skipped; then
+  status="fetched, pull skipped (clone on '${head_branch:-detached HEAD}' or an operation in progress) — clone may be STALE"
+elif $pull_ok; then
   after=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
   if [ "$before" = "$after" ]; then status="fresh"
   else status="pulled $(git -C "$BRAIN" rev-list --count "$before..$after" 2>/dev/null || echo '?') new commit(s)"; fi

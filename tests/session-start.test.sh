@@ -104,4 +104,24 @@ out=$(run_hook); assert_contains "$out" "STALE" "diverged is STALE"
 assert_eq "$(git -C "$SB/brain" rev-list --count HEAD)" "2" "diverged clone left untouched"
 t_teardown
 
+# missing remote-tracking ref → ladder still fast-forwards (no false STALE)
+t_setup; retention 3650; other_push 1; git -C "$SB/brain" update-ref -d refs/remotes/origin/main
+out=$(run_hook); assert_contains "$out" "pulled 1 new commit(s)" "missing origin/main ref recovers"
+t_teardown
+
+# detached HEAD → report-only: HEAD must not move
+t_setup; retention 3650; other_push 1; git -C "$SB/brain" checkout -q --detach HEAD; h=$(git -C "$SB/brain" rev-parse HEAD)
+out=$(run_hook); assert_contains "$out" "pull skipped" "detached HEAD skips ff"; assert_eq "$(git -C "$SB/brain" rev-parse HEAD)" "$h" "detached HEAD unchanged"
+t_teardown
+
+# paused rebase → report-only
+t_setup; retention 3650; other_push 1; mkdir -p "$SB/brain/.git/rebase-merge"; h=$(git -C "$SB/brain" rev-parse HEAD)
+out=$(run_hook); assert_contains "$out" "pull skipped" "rebase in progress skips ff"; assert_eq "$(git -C "$SB/brain" rev-parse HEAD)" "$h" "HEAD unchanged during rebase"
+rm -rf "$SB/brain/.git/rebase-merge"; t_teardown
+
+# non-upstream branch → report-only, local main untouched
+t_setup; retention 3650; other_push 1; git -C "$SB/brain" checkout -q -b feature; m=$(git -C "$SB/brain" rev-parse main)
+out=$(run_hook); assert_contains "$out" "pull skipped (clone on 'feature'" "feature branch skips ff"; assert_eq "$(git -C "$SB/brain" rev-parse main)" "$m" "main untouched"
+t_teardown
+
 t_report

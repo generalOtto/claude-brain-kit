@@ -27,7 +27,7 @@ Write a pointer with enough context to find it, nothing more:
 ## Enforcement layers (backstops, not the policy)
 
 1. `.gitignore` blocks common secret files (`.env`, `*.pem`, `*.key`, …)
-2. Optional gitleaks pre-commit hook (offered by `setup.sh`)
+2. Optional gitleaks pre-commit hook (offered by `/brain:setup`)
 3. gitleaks CI on every push (`.github/workflows/gitleaks.yml`)
 
 If Claude is ever about to write a secret value into this repo: **stop and write a

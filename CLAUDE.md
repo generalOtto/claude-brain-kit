@@ -21,8 +21,9 @@ is brand new. Offer to set it up right now by interviewing your human:
    - `identity/how-we-work.md`   — collaboration preferences
    - `projects/<name>.md`        — one short note per current project
 3. Update `INDEX.md`: one line per note you wrote.
-4. If any `{{PLACEHOLDER}}` tokens remain anywhere in the brain (check with a grep
-   for `{{YOUR_NAME}}` across `*.md`), fill every hit with the name they gave you.
+4. If any `{{PLACEHOLDER}}` tokens remain anywhere in the brain (`/brain:setup` normally
+   replaces them — check with a grep for `{{YOUR_NAME}}` across `*.md`), fill every hit
+   with the name they gave you.
 5. **Delete this entire "FIRST-RUN SETUP" section from CLAUDE.md.**
 6. Commit everything: `git add -A && git commit -m "brain: first-run setup" && git push`
    *(This is the one direct commit; every later write uses `brain-write.sh`.)*
@@ -47,11 +48,11 @@ more later; the brain grows with use.
 | `projects/` | One mission-control note per initiative (state, decisions, links) | When working on that project |
 | `knowledge/` | Dense, durable facts & gotchas (how-things-work) | Pull the specific note by relevance |
 | `conventions/` | Standing preferences for how I should work | Honor these whenever they apply |
-| `ideas/` | Idea seeds by category; `graduated/` = ones that became real | Capture per "Idea capture" below; browse when picking what to build |
+| `ideas/` | Idea seeds by category; `graduated/` = ones that became real | Capture per "Standing mechanisms" below; browse when picking what to build |
 | `pointers/` | Where external things live (other repos, vaults, secrets policy) | When you need something that isn't in the brain |
 | `journal/` | Dated log of what we did together over time | For history/continuity; append notable sessions |
 | `INDEX.md` | Catalog of every note + one-line descriptions | **Read this first when you need to find something and don't know which file** |
-| `TODO.md` | The single to-do list — chores, reminders, follow-ups | Per "The to-do list" below; any time {{YOUR_NAME}} says **"todos"** |
+| `TODO.md` | The single to-do list — chores, reminders, follow-ups | Per "Standing mechanisms" below; any time {{YOUR_NAME}} says **"todos"** |
 
 ## Recall protocol (use the brain without loading all of it)
 1. Identity essentials come from `identity/` — two small files.
