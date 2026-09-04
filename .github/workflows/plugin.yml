@@ -16,7 +16,7 @@ jobs:
           test -x plugins/brain/hooks/session-start
           test -x plugins/brain/hooks/run-hook.cmd
           test -x plugins/brain/bin/brain-write.sh
-          sudo apt-get install -y -q shellcheck >/dev/null
+          command -v shellcheck >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q shellcheck; }
           shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/bin/brain-write.sh tests/lib.sh tests/session-start.test.sh tests/brain-write.test.sh tests/run.sh
       - name: Bash tests
         run: bash tests/run.sh
