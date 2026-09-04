@@ -1,0 +1,30 @@
+# Validates the Claude Code plugins and runs their bash tests.
+# Path-scoped, so brains built from this template only run it when they touch the plugins.
+name: plugin
+on:
+  push:
+    paths: ["plugins/**", ".claude-plugin/**", "tests/**", ".github/workflows/plugin.yml"]
+  pull_request:
+    paths: ["plugins/**", ".claude-plugin/**", "tests/**", ".github/workflows/plugin.yml"]
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Executable bits + shellcheck
+        run: |
+          test -x plugins/brain/hooks/session-start
+          test -x plugins/brain/hooks/run-hook.cmd
+          test -x plugins/brain/bin/brain-write.sh
+          sudo apt-get install -y -q shellcheck >/dev/null
+          shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/bin/brain-write.sh tests/lib.sh tests/session-start.test.sh tests/brain-write.test.sh tests/run.sh
+      - name: Bash tests
+        run: bash tests/run.sh
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Validate manifests with the Claude Code CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate --strict .
+          claude plugin validate --strict plugins/brain
+          claude plugin validate --strict plugins/brain-voice
