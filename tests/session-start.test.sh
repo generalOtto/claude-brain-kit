@@ -66,4 +66,17 @@ t_setup; retention 3650
 assert_eq "$(BRAIN_DIR='~/brain-tilde' bash -c 'mkdir -p ~/brain-tilde; git -C ~/brain-tilde init -q; bash "$0" --resolve' "$HOOK")" "$HOME/brain-tilde" "tilde expansion"
 t_teardown
 
+# pending-sync branch counts as unpushed
+t_setup; retention 3650; git -C "$SB/brain" branch pending-sync/20260101T000000Z-1 >/dev/null
+out=$(run_hook); assert_contains "$out" "1 pending-sync" "pending-sync branch counted"
+t_teardown
+
+# settings.json scrape: scoped to this plugin, survives garbage
+t_setup; unset BRAIN_DIR
+printf '{\n  "pluginConfigs": {\n    "other@x": { "options": { "brain_dir": "/wrong" } },\n    "brain@claude-brain-kit": { "options": { "brain_dir": "%s" } }\n  },\n  "cleanupPeriodDays": 3650\n}\n' "$SB/brain" > "$HOME/.claude/settings.json"
+assert_eq "$(run_hook --resolve)" "$SB/brain" "brain_dir scoped to this plugin's key"
+printf 'not json at all {{{ "brain_dir": ' > "$HOME/.claude/settings.json"
+export BRAIN_DIR="$SB/brain"; out=$(run_hook); assert_contains "$out" "brain: fresh" "garbage settings.json still yields a status line"; run_hook >/dev/null; assert_rc $? 0 "garbage settings.json exits 0"
+t_teardown
+
 t_report

@@ -17,7 +17,7 @@
 #     never dumps note content into context.
 #
 # Brain clone resolution (shared with bin/brain-write.sh — keep identical):
-#   $BRAIN_DIR → $CLAUDE_PLUGIN_OPTION_BRAIN_DIR → pluginConfigs brain_dir in
+#   $BRAIN_DIR → $CLAUDE_PLUGIN_OPTION_BRAIN_DIR → pluginConfigs["brain@claude-brain-kit"] brain_dir in
 #   ~/.claude/settings.json → ~/claude-brain (if a git repo) → none.
 
 # ---- path helpers -----------------------------------------------------------
@@ -41,7 +41,7 @@ path_eq() {                        # case-insensitive on Windows
 resolve_brain() {
   local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
   if [ -z "$d" ] && [ -f "$s" ]; then
-    d=$(sed -n 's/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1)
+    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1)
     d=${d//\\\\/\\}                # JSON-escaped backslashes
   fi
   if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then
@@ -87,10 +87,11 @@ TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
 
 before=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
 pull_ok=false
+# -k 5: hard kill if git ignores SIGTERM; low-speed opts bound HTTPS stalls where no timeout binary exists
 if [ -n "$TIMEOUT_BIN" ]; then
-  "$TIMEOUT_BIN" 15 git -C "$BRAIN" pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
+  "$TIMEOUT_BIN" -k 5 15 git -C "$BRAIN" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
 else
-  git -C "$BRAIN" pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
+  git -C "$BRAIN" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
 fi
 if $pull_ok; then
   after=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
