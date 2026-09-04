@@ -6,8 +6,8 @@ repo.**
 Claude forgets you every session. This kit fixes that with the simplest thing that
 works: a private GitHub repo of markdown notes that *is* Claude's long-term memory —
 who you are, how you like to work, what you're building together, and the history of
-it all. No database, no daemon, no server, no subscription. Files, git, and a
-protocol.
+it all. No database, no daemon, no server, no subscription. Files, git, one client
+plugin, and a protocol.
 
 Set it up in ~10 minutes. The first Claude session **interviews you** and writes its
 own brain.
@@ -29,6 +29,8 @@ own brain.
   once-a-day digest of due chores ("remind me to X" files an item from any surface),
   zero-friction idea capture ("idea: …" → filed in one line), and an evidence-based
   profile that grows as you work — with a veto announcement on every capture.
+- 🔌 **A Claude Code plugin** — session-start auto-sync, concurrency-safe writes,
+  `/brain:todos` & `/brain:idea`, versioned with `claude plugin update`.
 - 🔐 **A real secrets policy** — the brain stores *pointers* to credentials, never
   values, enforced three ways (gitignore, optional pre-commit hook, gitleaks CI) —
   including custom rules for the markdown-shaped leaks stock scanners miss.
@@ -44,17 +46,18 @@ own brain.
    ```bash
    git clone git@github.com:<you>/<your-brain-repo>.git ~/claude-brain
    ```
-3. **Run setup:**
+3. **Install the plugin:**
    ```bash
-   bash ~/claude-brain/setup.sh
+   claude plugin marketplace add generalOtto/claude-brain-kit && claude plugin install brain@claude-brain-kit
    ```
-   Personalizes the templates, wires the brain into `~/.claude/CLAUDE.md` (via a
-   one-line `@import` stub — or `--symlink` if you prefer), raises Claude Code's
-   transcript retention, installs a session-start hook that auto-pulls the brain and
-   tells Claude whether the clone is fresh, and offers a gitleaks pre-commit hook.
-4. **Start any Claude Code session.** Claude notices the brain is new and offers to
-   interview you — five minutes of questions, then it writes your identity notes,
-   commits, and deletes its own setup instructions. You're live.
+   It brings the session-start hook that auto-pulls the brain and tells Claude
+   whether the clone is fresh, `brain-write.sh` on PATH, and the brain skills.
+4. **Wire this machine:** start a Claude Code session and run `/brain:setup` —
+   it personalizes the templates, wires the brain into `~/.claude/CLAUDE.md` (a
+   one-line `@import` stub), raises Claude Code's transcript retention, and offers
+   a gitleaks pre-commit hook. On a new brain, Claude then offers to interview
+   you — five minutes of questions, then it writes your identity notes, commits,
+   and deletes its own setup instructions. You're live.
 5. **Just work.** When something durable comes up, Claude writes it down (or you say
    *"remember this"*). Memories are commits, pushed the moment they're made —
    claude.ai and your phone see them live, other machines at their next pull.
@@ -67,7 +70,7 @@ own brain.
 graph TD
     A[🧠 Private GitHub repo<br/>markdown notes = the brain] -->|"@import stub"| B[Claude Code<br/>every session, every machine]
     A -->|GitHub MCP connector| C[claude.ai web + phone app]
-    A -->|git clone + setup.sh| D[Your other machines]
+    A -->|git clone + plugin| D[Your other machines]
     B --> E[Recall: INDEX.md first,<br/>then only the matching notes]
     B --> F[Writes: one small note + index line,<br/>own worktree → pushed to main]
 ```
@@ -89,8 +92,10 @@ conventions/   standing rules for how Claude works with you
 ideas/         idea seeds, filed by category the moment you say "idea: …"
 pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
-tools/         brain-write.sh (concurrency-safe writes), the session-start sync hook,
-               and voice-brain/ (the optional voice/connector MCP server)
+plugins/       brain/ (the Claude Code plugin: sync hook, brain-write.sh, skills)
+               · brain-voice/ (registers your Voice Brain server, if needed)
+tools/         voice-brain/ (the optional voice/connector MCP server)
+tests/         the plugin's test suite
 TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"
 INDEX.md       the catalog recall runs on
 CLAUDE.md      the bootloader (protocols + who you are)
@@ -127,16 +132,18 @@ the brain holds you.
 services — the optional voice server also fits comfortably in Cloudflare Workers'
 free tier.
 
-**Windows?** Use the default `@import` stub (no symlink, no Developer Mode needed)
-and run `setup.sh` under Git Bash or WSL — or do the key step by hand: put
-`@C:/path/to/your-brain/CLAUDE.md` in `~/.claude/CLAUDE.md` and you're wired. (The
-session-start sync hook is a bash script — on native Windows without Git Bash, skip
-it and pull manually.)
+**Windows?** Install the plugin from Git Bash (Git for Windows is the only
+prerequisite); the hook and `brain-write.sh` run through the same launcher the
+official plugins use. No symlinks, no Developer Mode, no python.
 
-**Does my brain repo run these GitHub Actions?** Two: a gitleaks scan on every push
-as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't want
-it — not recommended), and the voice-brain test suite, which only runs when you
-touch `tools/voice-brain/`.
+**Does my brain repo run these GitHub Actions?** Three: a gitleaks scan on every
+push as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't
+want it — not recommended), the voice-brain test suite (only when you touch
+`tools/voice-brain/`), and plugin validation (only when you touch `plugins/` or `tests/`).
+
+**Can I customize the skills?** Yes: your brain repo carries the plugin source under
+`plugins/`. `claude plugin marketplace add <you>/<your-brain-repo>` and install from
+there instead of the kit; you then own updates.
 
 **A friend shared this with me — where do I start?** Right at [Quickstart](#quickstart).
 The whole point is that step 4 explains the system *to you, in conversation*.

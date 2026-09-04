@@ -20,7 +20,7 @@ If it says `PUBLIC`, flip it before writing anything real:
 gh repo edit --visibility private --accept-visibility-change-consequences
 ```
 
-`setup.sh` checks this and warns loudly. Note that anything ever pushed to a public
+`/brain:setup` warns if the repo is public. Note that anything ever pushed to a public
 repo should be considered leaked (forks and caches survive a visibility flip) — if
 real personal content went public, treat it as exposed, don't just flip the switch.
 
@@ -57,7 +57,7 @@ that use them. The policy note ships at [`pointers/secrets.md`](../pointers/secr
 | Layer | What it catches | Ships as |
 |---|---|---|
 | `.gitignore` | whole secret files (`.env`, `*.pem`, keys) ever being tracked | on by default |
-| gitleaks pre-commit hook | secret-shaped strings *before* they enter history | offered by `setup.sh` (needs `gitleaks` installed) |
+| gitleaks pre-commit hook | secret-shaped strings *before* they enter history | offered by `/brain:setup` (needs `gitleaks` installed) |
 | gitleaks CI (`gitleaks-action` v3) | anything that slips through, on every push — including writes from claude.ai/mobile surfaces that never ran your local hook | on by default |
 
 The CI layer is free for personal-account repos (org-owned repos need a free license

@@ -30,7 +30,7 @@ device using one of the two tiers below.
   computer, a short-lived VM. No git, no keys, no clone; the GitHub MCP connector
   does everything (plus the optional Voice Brain connector, preferred for writes —
   `docs/voice.md`).
-- **Full**: primary work machines. Local clone + `setup.sh`. Choose when local
+- **Full**: primary work machines. Local clone + the brain plugin. Choose when local
   search over the notes, offline access, or git-based workflows matter here.
   (Satellite upgrades to Full at any time — just do Full's steps later.)
 
@@ -72,8 +72,9 @@ When unsure, ask: "satellite or full?"
 
 ### Full mode (~5 minutes, one GitHub click from your human)
 
-1. Verify `git` and `python3` exist (on immutable OSes — SteamOS, Fedora Silverblue,
-   etc. — prefer homebrew/flatpak over unlocking the root filesystem).
+1. Verify `git` exists (on immutable OSes — SteamOS, Fedora Silverblue, etc. —
+   prefer homebrew/flatpak over unlocking the root filesystem; on Windows, Git for
+   Windows is the only prerequisite).
 2. Generate a **dedicated** deploy key — don't reuse `~/.ssh/id_ed25519`: GitHub
    rejects a key that's already attached to any account or repo, and reusing a
    personal key would give this device account-wide access, defeating the point:
@@ -85,16 +86,17 @@ When unsure, ask: "satellite or full?"
    ticking **Allow write access**. (A deploy key is scoped to this one repo — a
    casual device never gets account-wide GitHub access. See
    [Security](security.md).)
-4. Clone with that key, and pin the clone to it:
+4. Clone with that key, pin the clone to it, and install the plugin:
    ```bash
    GIT_SSH_COMMAND="ssh -i ~/.ssh/brain-deploy -o IdentitiesOnly=yes" \
      git clone git@github.com:<you>/<your-brain-repo>.git ~/claude-brain
    git -C ~/claude-brain config core.sshCommand "ssh -i ~/.ssh/brain-deploy -o IdentitiesOnly=yes"
-   bash ~/claude-brain/setup.sh
+   claude plugin marketplace add generalOtto/claude-brain-kit && claude plugin install brain@claude-brain-kit
    ```
-   (`setup.sh` is idempotent: `~/.claude/CLAUDE.md` stub/symlink + retention
-   setting + the session-start auto-sync hook; personalization already happened on
-   the first machine.)
+   Then ask your human to run `/brain:setup` in a new Claude Code session (it's a
+   user-invoked command; idempotent: `~/.claude/CLAUDE.md` stub + retention setting —
+   the plugin's own hook does the session-start auto-sync; personalization already
+   happened on the first machine).
 5. Set the commit identity in that clone: `git config user.name` / `user.email` —
    ask your human (the name may be in `identity/about-me.md`; an email usually
    isn't).
@@ -104,6 +106,6 @@ When unsure, ask: "satellite or full?"
 
 Every future session on this device loads the brain automatically (stub or clone).
 Keep honoring the write protocol — on full-tier devices every write publishes through
-`tools/brain-write.sh` (own worktree → immediate push to `main`), so the remote — and
+`brain-write.sh` (own worktree → immediate push to `main`), so the remote — and
 every connector surface — has each memory the moment it's made; other clones catch up
 on their next pull.

@@ -10,7 +10,7 @@ that lets Claude find the right note without loading everything.
 graph TD
     A[Private GitHub repo<br/>= the brain] -->|"@import / symlink"| B[~/.claude/CLAUDE.md<br/>loads every Claude Code session]
     A -->|GitHub MCP connector| C[claude.ai web + mobile app]
-    A -->|git clone + setup.sh| D[Your other machines]
+    A -->|git clone + plugin| D[Your other machines]
     B --> E[Recall: INDEX.md first,<br/>then only matching notes]
     B --> F[Writes: note + INDEX line<br/>own worktree → push to main]
 ```
@@ -19,9 +19,11 @@ There are three moving parts, and you operate none of them:
 
 1. **The files** — markdown notes, one fact per file, with YAML frontmatter and
    `[[wikilinks]]`. Durable, versioned, offline-capable, greppable, restorable.
-2. **The wiring** — `~/.claude/CLAUDE.md` pulls the brain's bootloader into every
-   session (user-scope memory is documented Claude Code behavior; the bootloader
-   just happens to live in a repo).
+2. **The plugin** — client configuration installed by `claude plugin install`,
+   versioned, and not a server: it runs one bash script at session start and puts
+   one (`brain-write.sh`) on PATH. Its `/brain:setup` wires `~/.claude/CLAUDE.md`
+   so the brain's bootloader loads into every session (user-scope memory is
+   documented Claude Code behavior; the bootloader just happens to live in a repo).
 3. **The protocols** — the bootloader tells Claude *how to remember*: recall =
    index-first and selective; writes = note + index line, committed in a throwaway
    worktree and pushed straight to `main`.
@@ -61,12 +63,13 @@ all of it is *actually usable*.
 
 The write protocol never edits the shared clone directly. Every write happens in a
 throwaway git worktree and is pushed straight to remote `main` the moment it's made —
-which is what `tools/brain-write.sh` automates:
+which is what `brain-write.sh` (on PATH while the plugin is enabled) automates, and
+what the plugin's `brain:write` skill walks Claude through:
 
 ```bash
-wt=$(~/claude-brain/tools/brain-write.sh open)     # fresh worktree at origin/main
+wt=$(brain-write.sh open)     # fresh worktree at origin/main
 # ... Claude writes the note + index line inside $wt ...
-~/claude-brain/tools/brain-write.sh publish "$wt" "brain: what was learned"
+brain-write.sh publish "$wt" "brain: what was learned"
 ```
 
 Two reasons, both earned the hard way:
@@ -82,8 +85,8 @@ Two reasons, both earned the hard way:
   connector surfaces (which read GitHub live) see every write the moment it lands,
   and other clones catch up at their next pull. Offline, the write lands on the
   clone's local `main` (so it's still recallable on this device) — or a
-  `pending-sync/*` branch if the clone is busy — and `tools/brain-write.sh sync`
-  pushes it next time you're online.
+  `pending-sync/*` branch if the clone is busy — and `brain-write.sh sync` pushes
+  it next time you're online.
 
 Connector surfaces (claude.ai, the phone app, satellite devices) don't need any of
 this: their writes are GitHub API commits, which are already atomic on the remote.
@@ -91,29 +94,36 @@ this: their writes are GitHub API commits, which are already atomic on the remot
 ## Session start: the clone freshens itself
 
 Writes push themselves the moment they're made — but *reads* need the clone to be
-fresh, and "pull when you sit down" is a habit that fails silently. So `setup.sh`
-installs a Claude Code **SessionStart hook** (`tools/brain-session-start.sh`): when a
-session starts, it fast-forward-pulls the clone and injects exactly one status line
-into Claude's context —
+fresh, and "pull when you sit down" is a habit that fails silently. So the plugin
+ships a Claude Code **SessionStart hook**: when a session starts, it fetches and
+fast-forwards the clone and injects exactly one status line into Claude's context —
 
 - `brain: fresh` / `brain: pulled N new commit(s)` — normal cases
 - `brain: pull FAILED (offline or diverged) — clone may be STALE` — Claude knows not
-  to trust the clone blindly
-- `… UNPUSHED writes waiting … — run tools/brain-write.sh sync` — offline writes are
+  to trust the clone blindly (the same STALE flag appears when the clone sits on
+  another branch or mid-rebase: the hook fetches but never moves HEAD then)
+- `… UNPUSHED writes waiting … — run brain-write.sh sync` — offline writes are
   parked; sync once you're online
+- `… not wired: run /brain:setup` — the bootloader isn't imported on this machine
+- `… transcripts expire in Nd: run /brain:setup` — retention is still at the default
 
 Design constraints, in case you're auditing it: it **always exits 0** (a brain problem
 must never break session start), it **can't hang** (no terminal prompts, bounded ssh
 connect, a 15 s timeout where coreutils provides one), it's **report-only** beyond the
 pull (never auto-syncs, never touches worktrees), and it **never dumps note content**
 into context — recall stays index-first. The hook matcher is `startup|clear`, not
-`resume`, so resuming a session doesn't pay pull latency.
+`resume`, so resuming a session doesn't pay pull latency. The same script answers
+`--resolve` (which clone path it will use) and `--check-wired` (is the bootloader
+imported) — that's what `/brain:setup` and the skills call.
 
 ## Mechanisms that ride on conversations (still no scheduler)
 
 Claude can't run on a schedule without an always-on machine — and this system runs no
 servers. The kit's answer: intermittent behavior rides on sessions that already
-happen, as conventions the bootloader loads every time. Three ship enabled:
+happen. The conventions in `conventions/` are the source of truth on every surface;
+on Claude Code they surface as the plugin's `brain:todos` / `brain:idea` /
+`brain:profile` skills, loaded on demand instead of in every session. Three ship
+enabled:
 
 - **The to-do list** (`TODO.md` + `conventions/todo-list.md`) — one list for chores,
   reminders, and follow-ups. At most once a day, *after* handling what you actually
@@ -131,8 +141,8 @@ happen, as conventions the bootloader loads every time. Three ship enabled:
   and credentials count — never how projects are implemented (that's mostly Claude's
   authorship), and never knowledge Claude itself explained to you.
 
-Each is a couple of markdown files plus a bootloader section — delete its files and
-its bootloader section and the mechanism is gone, nothing else to uninstall.
+Each is a couple of markdown files plus a skill — uninstall the plugin and delete the
+files and the mechanism is gone, nothing else to uninstall.
 
 ## The recall discipline
 

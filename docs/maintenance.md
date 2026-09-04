@@ -58,7 +58,10 @@ Review the commits; revert anything you disagree with. That's the whole ceremony
 `CLAUDE.md` loads into *every* session — its length is a per-session tax. Keep it a
 bootloader (who + how to remember), never a knowledge dump; knowledge belongs in
 notes behind the index. If you add sections, ask whether every session needs them.
-The same goes for `identity/` notes: always-loaded means always-paid-for.
+The same goes for `identity/` notes: always-loaded means always-paid-for. The
+to-do / idea / profile mechanisms live in the plugin's skills now, loaded on demand
+rather than in every session; the plugin's always-on cost is about 400 tokens —
+`claude plugin details brain@claude-brain-kit` shows it.
 
 ## Trust but verify (occasionally)
 
