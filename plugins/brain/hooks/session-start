@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# session-start — Claude Code SessionStart hook for the brain plugin.
+# Freshens the brain clone and prints ONE status line; stdout lands in Claude's
+# context at session start (matcher startup|clear, launched via hooks/run-hook.cmd).
+#
+# Modes:
+#   (none)          status line (always exits 0)
+#   --resolve       print the resolved brain clone path; exit 1 if none
+#   --check-wired   exit 0 if ~/.claude/CLAUDE.md imports the brain's CLAUDE.md
+#                   (or is a symlink to it); exit 1 + one line otherwise
+#
+# Invariants (status mode):
+#   - ALWAYS exits 0 — a brain problem must never break session start.
+#   - Never hangs — no terminal prompts, bounded ssh connect, hard timeout where
+#     coreutils provides one.
+#   - Report-only beyond the ff-pull — never runs sync, never touches worktrees,
+#     never dumps note content into context.
+#
+# Brain clone resolution (shared with bin/brain-write.sh — keep identical):
+#   $BRAIN_DIR → $CLAUDE_PLUGIN_OPTION_BRAIN_DIR → pluginConfigs brain_dir in
+#   ~/.claude/settings.json → ~/claude-brain (if a git repo) → none.
+
+# ---- path helpers -----------------------------------------------------------
+normpath() {                       # ~ expansion, Windows → POSIX, no trailing slash
+  local p="$1"
+  case "$p" in "~") p="$HOME" ;; "~/"*) p="$HOME/${p#\~/}" ;; esac
+  if command -v cygpath >/dev/null 2>&1; then
+    p=$(cygpath -u "$p" 2>/dev/null || printf '%s' "$p")
+  else
+    p=${p//\\//}
+  fi
+  p=${p%/}
+  printf '%s' "$p"
+}
+path_eq() {                        # case-insensitive on Windows
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) [ "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')" ] ;;
+    *) [ "$1" = "$2" ] ;;
+  esac
+}
+resolve_brain() {
+  local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
+  if [ -z "$d" ] && [ -f "$s" ]; then
+    d=$(sed -n 's/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1)
+    d=${d//\\\\/\\}                # JSON-escaped backslashes
+  fi
+  if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then
+    d="$HOME/claude-brain"
+  fi
+  [ -n "$d" ] || return 1
+  normpath "$d"
+}
+readlink_f() { readlink -f "$1" 2>/dev/null || readlink "$1" 2>/dev/null || printf '%s' "$1"; }
+
+# ---- wired check --------------------------------------------------------------
+check_wired() {                    # $1 = brain dir; prints one line, returns 0/1
+  local entry="$HOME/.claude/CLAUDE.md" target line p
+  target=$(normpath "$(readlink_f "$1/CLAUDE.md")")
+  if [ -L "$entry" ]; then
+    if path_eq "$(normpath "$(readlink_f "$entry")")" "$target"; then echo "wired (symlink)"; return 0; fi
+    echo "not wired: ~/.claude/CLAUDE.md is a symlink to $(readlink "$entry") — add the @import line there by hand"; return 1
+  fi
+  [ -f "$entry" ] || { echo "not wired: ~/.claude/CLAUDE.md missing"; return 1; }
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}                              # CRLF-saved file
+    case "$line" in
+      @*) p=$(normpath "$(readlink_f "$(normpath "${line#@}")")")   # canonicalize both sides
+          path_eq "$p" "$target" && { echo "wired (@import)"; return 0; } ;;
+    esac
+  done < "$entry"
+  echo "not wired: no @import of $1/CLAUDE.md in ~/.claude/CLAUDE.md"; return 1
+}
+
+# ---- modes -----------------------------------------------------------------------
+case "${1:-}" in
+  --resolve) resolve_brain || { echo "no brain clone found (BRAIN_DIR, plugin option, settings.json pluginConfigs, ~/claude-brain)" >&2; exit 1; }; echo; exit 0 ;;
+  --check-wired) BRAIN=$(resolve_brain) || { echo "not wired: no brain clone found"; exit 1; }; check_wired "$BRAIN"; exit $? ;;
+esac
+
+# ---- status mode -------------------------------------------------------------------
+BRAIN=$(resolve_brain) || { echo "brain: no clone found — set the plugin's brain_dir option or clone to ~/claude-brain, then run /brain:setup"; exit 0; }
+git -C "$BRAIN" rev-parse --git-dir >/dev/null 2>&1 || { echo "brain: clone at $BRAIN is missing or broken — brain may be stale"; exit 0; }
+
+export GIT_TERMINAL_PROMPT=0
+export GIT_SSH_COMMAND="ssh -oBatchMode=yes -oConnectTimeout=5"
+TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
+
+before=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
+pull_ok=false
+if [ -n "$TIMEOUT_BIN" ]; then
+  "$TIMEOUT_BIN" 15 git -C "$BRAIN" pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
+else
+  git -C "$BRAIN" pull --ff-only --quiet >/dev/null 2>&1 && pull_ok=true
+fi
+if $pull_ok; then
+  after=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
+  if [ "$before" = "$after" ]; then status="fresh"
+  else status="pulled $(git -C "$BRAIN" rev-list --count "$before..$after" 2>/dev/null || echo '?') new commit(s)"; fi
+else
+  status="pull FAILED (offline or diverged) — clone may be STALE"
+fi
+
+suffix=""
+ahead=$(git -C "$BRAIN" rev-list --count origin/main..main 2>/dev/null || echo 0)
+pending=$(git -C "$BRAIN" for-each-ref 'refs/heads/pending-sync/*' | wc -l | tr -d '[:space:]')
+if [ "${ahead:-0}" -gt 0 ] || [ "${pending:-0}" -gt 0 ]; then
+  suffix="$suffix | UNPUSHED writes waiting (${ahead} on local main, ${pending} pending-sync) — run brain-write.sh sync"
+fi
+check_wired "$BRAIN" >/dev/null || suffix="$suffix | not wired: run /brain:setup"
+days=$(sed -n 's/.*"cleanupPeriodDays"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$HOME/.claude/settings.json" 2>/dev/null | head -1)
+days=${days:-30}
+[ "$days" -lt 3650 ] && suffix="$suffix | transcripts expire in ${days}d: run /brain:setup"
+
+echo "brain: ${status}${suffix}"
+exit 0

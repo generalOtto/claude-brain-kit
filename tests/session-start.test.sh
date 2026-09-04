@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# shellcheck source=lib.sh
+source "$(dirname "$0")/lib.sh"
+run_hook() { bash "$HOOK" "$@" 2>&1; }
+# Git Bash turns `ln -s` on a directory into a COPY, so brain-link is a distinct clone
+# there; the test therefore points BRAIN_DIR at brain-link itself on every platform.
+wire() { printf '@~/brain-link/CLAUDE.md\n' > "$HOME/.claude/CLAUDE.md"; ln -s "$SB/brain" "$HOME/brain-link" 2>/dev/null || cp -r "$SB/brain" "$HOME/brain-link"; export BRAIN_DIR="$HOME/brain-link"; }
+retention() { printf '{ "cleanupPeriodDays": %s }\n' "$1" > "$HOME/.claude/settings.json"; }
+
+t_setup; retention 3650
+out=$(run_hook); assert_contains "$out" "brain: fresh" "fresh clone"
+assert_contains "$out" "not wired: run /brain:setup" "unwired nudge"
+assert_eq "$(printf '%s' "$out" | wc -l | tr -d ' ')" "0" "exactly one line"
+t_teardown
+
+t_setup; retention 3650; other_push 2
+out=$(run_hook); assert_contains "$out" "pulled 2 new commit(s)" "pulled N"
+t_teardown
+
+t_setup; retention 3650; go_offline
+out=$(run_hook); assert_contains "$out" "STALE" "offline is STALE"
+t_teardown
+
+t_setup; retention 3650; echo x > "$SB/brain/local.md"; git -C "$SB/brain" add -A; git -C "$SB/brain" commit -qm local; go_offline
+out=$(run_hook); assert_contains "$out" "UNPUSHED writes waiting (1 on local main" "unpushed suffix"
+assert_contains "$out" "run brain-write.sh sync" "sync hint has no tools/ prefix"
+t_teardown
+
+t_setup; retention 3650; wire
+out=$(run_hook); assert_lacks "$out" "not wired" "wired via @~ line"
+run_hook --check-wired >/dev/null; assert_rc $? 0 "--check-wired exit 0"
+printf '@~/brain-link/CLAUDE.md\r\n' > "$HOME/.claude/CLAUDE.md"
+run_hook --check-wired >/dev/null; assert_rc $? 0 "CRLF import line still wired"
+t_teardown
+
+t_setup; retention 3650
+run_hook --check-wired >/dev/null; assert_rc $? 1 "--check-wired exit 1 when unwired"
+if ! is_windows; then
+  ln -s "$SB/brain/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  out=$(run_hook); assert_lacks "$out" "not wired" "wired via symlink"
+  rm "$HOME/.claude/CLAUDE.md"; ln -s "$SB/other/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  out=$(run_hook --check-wired); assert_contains "$out" "symlink to" "foreign symlink reported"
+fi
+t_teardown
+
+t_setup; rm -f "$HOME/.claude/settings.json"
+out=$(run_hook); assert_contains "$out" "transcripts expire in 30d: run /brain:setup" "absent retention key"
+retention 90;   out=$(run_hook); assert_contains "$out" "transcripts expire in 90d" "low retention"
+retention 3650; out=$(run_hook); assert_lacks "$out" "transcripts expire" "retention ok"
+t_teardown
+
+t_setup; retention 3650
+unset BRAIN_DIR
+export CLAUDE_PLUGIN_OPTION_BRAIN_DIR="$SB/brain"; assert_eq "$(run_hook --resolve)" "$SB/brain" "resolve via plugin option"
+unset CLAUDE_PLUGIN_OPTION_BRAIN_DIR
+printf '{\n  "cleanupPeriodDays": 3650,\n  "pluginConfigs": { "brain@claude-brain-kit": { "options": { "brain_dir": "%s" } } }\n}\n' "$SB/brain" > "$HOME/.claude/settings.json"
+assert_eq "$(run_hook --resolve)" "$SB/brain" "resolve via settings.json pluginConfigs"
+retention 3650; mkdir -p "$HOME/claude-brain"; git -C "$HOME/claude-brain" init -q
+assert_eq "$(run_hook --resolve)" "$HOME/claude-brain" "resolve via ~/claude-brain default"
+rm -rf "$HOME/claude-brain"
+out=$(run_hook); assert_contains "$out" "brain: no clone found" "no clone → one line, still exit 0"; run_hook >/dev/null; assert_rc $? 0 "status mode always exits 0"
+run_hook --resolve >/dev/null; assert_rc $? 1 "--resolve exits 1 when none"
+t_teardown
+
+t_setup; retention 3650
+assert_eq "$(BRAIN_DIR='~/brain-tilde' bash -c 'mkdir -p ~/brain-tilde; git -C ~/brain-tilde init -q; bash "$0" --resolve' "$HOOK")" "$HOME/brain-tilde" "tilde expansion"
+t_teardown
+
+t_report
