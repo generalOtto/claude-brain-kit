@@ -82,7 +82,9 @@ BRAIN=$(resolve_brain) || { echo "brain: no clone found — set the plugin's bra
 git -C "$BRAIN" rev-parse --git-dir >/dev/null 2>&1 || { echo "brain: clone at $BRAIN is missing or broken — brain may be stale"; exit 0; }
 
 export GIT_TERMINAL_PROMPT=0
-export GIT_SSH_COMMAND="ssh -oBatchMode=yes -oConnectTimeout=5"
+# Respect a per-clone core.sshCommand (deploy-key setups) — the env var would override it.
+ssh_base=$(git -C "$BRAIN" config --get core.sshCommand 2>/dev/null || echo ssh)
+export GIT_SSH_COMMAND="$ssh_base -oBatchMode=yes -oConnectTimeout=5"
 TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
 
 before=$(git -C "$BRAIN" rev-parse HEAD 2>/dev/null)
@@ -104,7 +106,7 @@ clone_ready() {
 }
 # fetch, then fast-forward from the remote-tracking ref — NOT `git pull`: two sessions starting at once
 # (or a second hook on the same clone) interleave their writes to .git/FETCH_HEAD and pull aborts with
-# "Cannot fast-forward to multiple branches" although both fetches succeeded (seen on Windows, 2026-09-04).
+# "Cannot fast-forward to multiple branches" although both fetches succeeded.
 # Each step is retried once after 1s for the remaining lock races (refs/remotes/*.lock, index.lock); the
 # fetch is not retried when the first attempt ran long — that is a stall, not a race.
 # -k 5: hard kill if git ignores SIGTERM; low-speed opts bound HTTPS stalls where no timeout binary exists

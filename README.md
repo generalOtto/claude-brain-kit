@@ -52,6 +52,8 @@ own brain.
    ```
    It brings the session-start hook that auto-pulls the brain and tells Claude
    whether the clone is fresh, `brain-write.sh` on PATH, and the brain skills.
+   If your clone is not at `~/claude-brain`, add `--config brain_dir=<path>` to the
+   install command (or set it later under `/plugin` → brain → configure).
 4. **Wire this machine:** start a Claude Code session and run `/brain:setup` —
    it personalizes the templates, wires the brain into `~/.claude/CLAUDE.md` (a
    one-line `@import` stub), raises Claude Code's transcript retention, and offers

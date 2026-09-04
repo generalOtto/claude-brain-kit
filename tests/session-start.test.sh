@@ -79,7 +79,7 @@ printf 'not json at all {{{ "brain_dir": ' > "$HOME/.claude/settings.json"
 export BRAIN_DIR="$SB/brain"; out=$(run_hook); assert_contains "$out" "brain: fresh" "garbage settings.json still yields a status line"; run_hook >/dev/null; assert_rc $? 0 "garbage settings.json exits 0"
 t_teardown
 
-# concurrency (dogfood 2026-09-04): two hooks on one clone — a second session, or the legacy settings.json
+# concurrency: two hooks on one clone — a second session, or the legacy settings.json
 # hook next to the plugin — must not report STALE; `git pull` did (interleaved FETCH_HEAD).
 t_setup; retention 3650; other_push 2
 out=$( (run_hook | sed 's/^/A /') & (run_hook | sed 's/^/B /') & wait )
@@ -127,6 +127,19 @@ t_teardown
 # local branch named differently from its upstream still fast-forwards
 t_setup; retention 3650; git -C "$SB/brain" checkout -q -b brain; git -C "$SB/brain" branch -q -u origin/main; other_push 1
 out=$(run_hook); assert_contains "$out" "pulled 1 new commit(s)" "tracking branch with a different name fast-forwards"
+t_teardown
+
+# a clone-level core.sshCommand is honoured (deploy-key setups)
+t_setup; retention 3650
+printf '#!/usr/bin/env bash\necho marker > "%s/ssh-marker"\nexec ssh "$@"\n' "$SB" > "$SB/myssh"; chmod +x "$SB/myssh"
+git -C "$SB/brain" config core.sshCommand "$SB/myssh"; git -C "$SB/brain" remote set-url origin "ssh://127.0.0.1:1/nonexistent.git"
+run_hook >/dev/null; assert_eq "$([ -f "$SB/ssh-marker" ] && echo yes)" "yes" "core.sshCommand wrapper invoked"
+t_teardown
+
+# real-world settings.json layout: enabledPlugins block (with the plugin key) precedes pluginConfigs
+t_setup; retention 3650; unset BRAIN_DIR
+printf '{\n  "enabledPlugins": {\n    "brain@claude-brain-kit": true\n  },\n  "cleanupPeriodDays": 3650,\n  "pluginConfigs": {\n    "brain@claude-brain-kit": {\n      "options": {\n        "brain_dir": "%s"\n      }\n    }\n  }\n}\n' "$SB/brain" > "$HOME/.claude/settings.json"
+assert_eq "$(run_hook --resolve)" "$SB/brain" "enabledPlugins-first layout resolves"
 t_teardown
 
 t_report

@@ -111,7 +111,7 @@ fast-forwards the clone and injects exactly one status line into Claude's contex
 
 Design constraints, in case you're auditing it: it **always exits 0** (a brain problem
 must never break session start), it **can't hang** (no terminal prompts, bounded ssh
-connect, bounded timeouts — 15 s fetch, 5 s fast-forward, 30 s overall — where
+connect, bounded timeouts — 15 s fetch, 5 s fast-forward; Claude Code's 30 s hook limit caps the whole run — where
 coreutils provides one), it's **report-only** beyond the pull (never auto-syncs, never
 touches worktrees), and it **never dumps note content**
 into context — recall stays index-first. The hook matcher is `startup|clear`, not
