@@ -11,13 +11,13 @@ Brain clone (from the plugin's `brain_dir` option): `${user_config.brain_dir}`
 Shared checks: `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` prints the clone
 path the hook will use; `… --check-wired` says whether the bootloader is wired.
 Run every step, report each as `✓ done` / `· already fine` / `⚠ needs you`, never
-delete anything, and never store a secret.
+delete files or notes, touch only the settings.json keys named below, and never store a secret.
 
 1. **Resolve the clone.** Run `--resolve`. If it fails, stop: tell the user to clone
    their brain (default `~/claude-brain`) or fix the plugin's `brain_dir` option
    (`/plugin` → brain → configure), then re-run.
 2. **Privacy check.** `gh repo view --json visibility -q .visibility` inside the clone
-   (skip silently if `gh` is missing). If `PUBLIC`: warn loudly and give the fix
+   (skip silently if `gh` is missing). If `PUBLIC`: warn loudly and SHOW (do not run) the fix
    `gh repo edit --visibility private --accept-visibility-change-consequences`.
 3. **Placeholders.** `grep -rl '{{YOUR_NAME}}' --include='*.md' <clone>`. If any hit:
    ask the user's name (default `git config user.name`), replace in every hit
