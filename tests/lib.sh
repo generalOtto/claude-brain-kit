@@ -2,6 +2,7 @@
 # tests/lib.sh — shared helpers for the plugin's bash tests.
 # Every test runs in a throwaway sandbox: its own $HOME, a bare git origin,
 # a "brain" clone wired to it, and an "other" clone that plays a second device.
+# Requires git >= 2.28 (git init -b).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN="$ROOT/plugins/brain"
@@ -18,15 +19,16 @@ t_setup() {
   export TMPDIR="$SB/tmp"; mkdir -p "$TMPDIR"
   export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 GIT_EDITOR=true
-  git init --quiet --bare -b main "$SB/origin.git"
-  git -c init.defaultBranch=main clone --quiet "$SB/origin.git" "$SB/brain" 2>/dev/null
+  git init --quiet --bare -b main "$SB/origin.git" || { echo "t_setup: git init --bare failed" >&2; return 1; }
+  git -c init.defaultBranch=main clone --quiet "$SB/origin.git" "$SB/brain" 2>/dev/null || { echo "t_setup: clone brain failed" >&2; return 1; }
   printf -- '---\nname: index\n---\n# INDEX\n' > "$SB/brain/INDEX.md"
   printf '# bootloader\n' > "$SB/brain/CLAUDE.md"
-  git -C "$SB/brain" add -A && git -C "$SB/brain" commit --quiet -m init
-  git -C "$SB/brain" push --quiet -u origin main 2>/dev/null
-  git -c init.defaultBranch=main clone --quiet "$SB/origin.git" "$SB/other" 2>/dev/null
+  git -C "$SB/brain" add -A && git -C "$SB/brain" commit --quiet -m init || { echo "t_setup: initial commit failed" >&2; return 1; }
+  git -C "$SB/brain" push --quiet -u origin main || { echo "t_setup: push -u failed" >&2; return 1; }
+  git -c init.defaultBranch=main clone --quiet "$SB/origin.git" "$SB/other" 2>/dev/null || { echo "t_setup: clone other failed" >&2; return 1; }
   export BRAIN_DIR="$SB/brain"
   unset CLAUDE_PLUGIN_OPTION_BRAIN_DIR
+  trap 't_teardown' EXIT
 }
 t_teardown() { cd / && rm -rf "$SB"; }
 
