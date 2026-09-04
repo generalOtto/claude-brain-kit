@@ -8,7 +8,7 @@ that lets Claude find the right note without loading everything.
 
 ```mermaid
 graph TD
-    A[Private GitHub repo<br/>= the brain] -->|"@import / symlink"| B[~/.claude/CLAUDE.md<br/>loads every Claude Code session]
+    A[Private GitHub repo<br/>= the brain] -->|"@import stub"| B[~/.claude/CLAUDE.md<br/>loads every Claude Code session]
     A -->|GitHub MCP connector| C[claude.ai web + mobile app]
     A -->|git clone + plugin| D[Your other machines]
     B --> E[Recall: INDEX.md first,<br/>then only matching notes]
@@ -101,7 +101,9 @@ fast-forwards the clone and injects exactly one status line into Claude's contex
 - `brain: fresh` / `brain: pulled N new commit(s)` — normal cases
 - `brain: pull FAILED (offline or diverged) — clone may be STALE` — Claude knows not
   to trust the clone blindly (the same STALE flag appears when the clone sits on
-  another branch or mid-rebase: the hook fetches but never moves HEAD then)
+  another branch or mid-rebase: the hook fetches but never moves HEAD then, reporting
+  `brain: fetched, pull skipped (clone on '<branch>' or an operation in progress) —
+  clone may be STALE`)
 - `… UNPUSHED writes waiting … — run brain-write.sh sync` — offline writes are
   parked; sync once you're online
 - `… not wired: run /brain:setup` — the bootloader isn't imported on this machine
@@ -109,8 +111,9 @@ fast-forwards the clone and injects exactly one status line into Claude's contex
 
 Design constraints, in case you're auditing it: it **always exits 0** (a brain problem
 must never break session start), it **can't hang** (no terminal prompts, bounded ssh
-connect, a 15 s timeout where coreutils provides one), it's **report-only** beyond the
-pull (never auto-syncs, never touches worktrees), and it **never dumps note content**
+connect, bounded timeouts — 15 s fetch, 5 s fast-forward, 30 s overall — where
+coreutils provides one), it's **report-only** beyond the pull (never auto-syncs, never
+touches worktrees), and it **never dumps note content**
 into context — recall stays index-first. The hook matcher is `startup|clear`, not
 `resume`, so resuming a session doesn't pay pull latency. The same script answers
 `--resolve` (which clone path it will use) and `--check-wired` (is the bootloader

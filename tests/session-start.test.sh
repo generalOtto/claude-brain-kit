@@ -124,4 +124,9 @@ t_setup; retention 3650; other_push 1; git -C "$SB/brain" checkout -q -b feature
 out=$(run_hook); assert_contains "$out" "pull skipped (clone on 'feature'" "feature branch skips ff"; assert_eq "$(git -C "$SB/brain" rev-parse main)" "$m" "main untouched"
 t_teardown
 
+# local branch named differently from its upstream still fast-forwards
+t_setup; retention 3650; git -C "$SB/brain" checkout -q -b brain; git -C "$SB/brain" branch -q -u origin/main; other_push 1
+out=$(run_hook); assert_contains "$out" "pulled 1 new commit(s)" "tracking branch with a different name fast-forwards"
+t_teardown
+
 t_report

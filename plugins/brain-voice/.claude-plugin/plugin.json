@@ -9,7 +9,7 @@
     "voice_brain_url": {
       "type": "string",
       "title": "Voice Brain MCP URL",
-      "description": "The full URL printed by tools/voice-brain/setup.sh — https://<host>/mcp/<secret>. The secret path IS the credential; it is stored in your OS keychain, never in settings.json.",
+      "description": "The full URL printed by tools/voice-brain/setup.sh — https://<host>/mcp/<secret>. The secret path IS the credential; it is kept out of settings.json — in the macOS Keychain, or ~/.claude/.credentials.json elsewhere.",
       "sensitive": true,
       "required": true
     }

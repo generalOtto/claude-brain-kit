@@ -42,7 +42,7 @@ on the fly if you don't have one), and a claude.ai plan that allows **custom
 connectors** (paid plans; the directory-connector tier isn't enough here).
 
 ```bash
-bash ~/claude-brain/tools/voice-brain/setup.sh
+bash <your-clone>/tools/voice-brain/setup.sh
 ```
 
 The script derives everything it can instead of asking you to paste it: your
@@ -69,7 +69,8 @@ Re-running the script is safe: existing secrets and the subdomain are kept.
 automatically when it is signed in with the same claude.ai account (not with
 API-key/Bedrock/Vertex auth) — check `claude mcp list`. If it is not there:
 `claude plugin install brain-voice@claude-brain-kit` and paste the URL when prompted
-(stored in your OS keychain).
+(kept out of settings.json — in the macOS Keychain, or `~/.claude/.credentials.json`
+elsewhere).
 
 ## Security posture
 
@@ -85,7 +86,7 @@ API-key/Bedrock/Vertex auth) — check `claude mcp list`. If it is not there:
   request).
 - **Blast radius = one repo.** The PAT is fine-grained and scoped to the brain repo
   only; it lives as a Worker secret, never in code or config. Rotate the path
-  secret any time with `bash tools/voice-brain/setup.sh --rotate-secret` (then update the connector
+  secret any time with `bash <your-clone>/tools/voice-brain/setup.sh --rotate-secret` (then update the connector
   URL); kill the whole thing with `npx wrangler delete`.
 - **The server won't commit secrets.** Secret-shaped content (tokens, keys,
   credential assignments) is refused server-side — same policy as the rest of the

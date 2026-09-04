@@ -55,9 +55,9 @@ own brain.
 4. **Wire this machine:** start a Claude Code session and run `/brain:setup` —
    it personalizes the templates, wires the brain into `~/.claude/CLAUDE.md` (a
    one-line `@import` stub), raises Claude Code's transcript retention, and offers
-   a gitleaks pre-commit hook. On a new brain, Claude then offers to interview
-   you — five minutes of questions, then it writes your identity notes, commits,
-   and deletes its own setup instructions. You're live.
+   a gitleaks pre-commit hook. On a new brain, Claude offers to interview you in
+   your next session — five minutes of questions, then it writes your identity
+   notes, commits, and deletes its own setup instructions. You're live.
 5. **Just work.** When something durable comes up, Claude writes it down (or you say
    *"remember this"*). Memories are commits, pushed the moment they're made —
    claude.ai and your phone see them live, other machines at their next pull.
@@ -132,18 +132,22 @@ the brain holds you.
 services — the optional voice server also fits comfortably in Cloudflare Workers'
 free tier.
 
-**Windows?** Install the plugin from Git Bash (Git for Windows is the only
-prerequisite); the hook and `brain-write.sh` run through the same launcher the
-official plugins use. No symlinks, no Developer Mode, no python.
+**Windows?** Install the plugin from Git Bash. Git for Windows is the only
+prerequisite: the session-start hook runs through the same polyglot `run-hook.cmd`
+launcher the superpowers plugin uses, and `brain-write.sh` is an ordinary bash
+script the Bash tool runs from PATH. No symlinks, no Developer Mode, no python.
 
 **Does my brain repo run these GitHub Actions?** Three: a gitleaks scan on every
 push as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't
 want it — not recommended), the voice-brain test suite (only when you touch
-`tools/voice-brain/`), and plugin validation (only when you touch `plugins/` or `tests/`).
+`tools/voice-brain/`), and plugin validation + tests (only when you touch
+`plugins/`, `.claude-plugin/`, or `tests/`).
 
 **Can I customize the skills?** Yes: your brain repo carries the plugin source under
 `plugins/`. `claude plugin marketplace add <you>/<your-brain-repo>` and install from
-there instead of the kit; you then own updates.
+there instead of the kit; you then own updates. Rename `name` in your brain's
+`.claude-plugin/marketplace.json` first (e.g. `my-brain`) so it doesn't collide with
+the kit's marketplace, then `claude plugin install brain@my-brain`.
 
 **A friend shared this with me — where do I start?** Right at [Quickstart](#quickstart).
 The whole point is that step 4 explains the system *to you, in conversation*.
