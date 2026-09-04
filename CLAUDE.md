@@ -21,13 +21,11 @@ is brand new. Offer to set it up right now by interviewing your human:
    - `identity/how-we-work.md`   — collaboration preferences
    - `projects/<name>.md`        — one short note per current project
 3. Update `INDEX.md`: one line per note you wrote.
-4. If any `{{PLACEHOLDER}}` tokens remain anywhere in the brain (setup.sh normally
-   replaces them — check with a grep for `{{YOUR_NAME}}` across `*.md`), fill every
-   hit with the name they gave you.
+4. If any `{{PLACEHOLDER}}` tokens remain anywhere in the brain (check with a grep
+   for `{{YOUR_NAME}}` across `*.md`), fill every hit with the name they gave you.
 5. **Delete this entire "FIRST-RUN SETUP" section from CLAUDE.md.**
-6. Commit everything: `git add -A && git commit -m "brain: first-run setup"`
-   — and push if a remote is configured. (Committing directly is fine for this
-   one-time setup; every write after it follows the Write protocol's worktree flow.)
+6. Commit everything: `git add -A && git commit -m "brain: first-run setup" && git push`
+   *(This is the one direct commit; every later write uses `brain-write.sh`.)*
 7. Tell them their brain is live, and that from now on you'll remember.
 
 Keep the interview light — 5 minutes, not an interrogation. They can always add
@@ -36,7 +34,7 @@ more later; the brain grows with use.
 ## Where the brain lives
 - Canonical store: this git repo (a **private** GitHub repo), cloned locally.
 - **Source of truth = the markdown files here.** Versioned in git → durable, offline-capable, restorable. No live service is required for the brain to work.
-- Sync: a **SessionStart hook** (`tools/brain-session-start.sh`, installed by `setup.sh`) auto-pulls this clone when a session starts and injects a one-line status — a STALE warning means don't trust the clone blindly; an UNPUSHED-writes warning means run `tools/brain-write.sh sync`. Manual fallback: `git pull --ff-only`. The clone is a **read cache** — never edit files in it directly; every write publishes through the worktree flow in the Write protocol below.
+- Sync: the **brain plugin**'s SessionStart hook auto-pulls this clone when a session starts and injects one status line — a STALE warning means don't trust the clone blindly; an UNPUSHED-writes warning means run `brain-write.sh sync`; a "not wired" or "transcripts expire" nudge means run `/brain:setup`. Manual fallback: `git pull --ff-only`. The clone is a **read cache** — never edit it directly; every write goes through the worktree flow below.
 
 ## Who {{YOUR_NAME}} is (always-true essentials)
 - See `identity/about-me.md` for who they are and `identity/how-we-work.md` for how we collaborate. Read both whenever the session is personal or strategic — they are small.
@@ -64,21 +62,16 @@ more later; the brain grows with use.
 When you learn something durable — a fact about {{YOUR_NAME}}, a decision, a project's state, a gotcha, a preference:
 1. Write/update the right note. Frontmatter: `name`, `description`, `type` (`user`|`feedback`|`project`|`reference`|`idea`). **One fact per file**; link related notes with `[[name]]`.
 2. Add/update its one-line entry in `INDEX.md`.
-3. Publish via the **worktree flow — never edit the shared clone directly** (two sessions on one device silently clobber each other): `wt=$(~/claude-brain/tools/brain-write.sh open)` → make the edits inside `$wt` → `~/claude-brain/tools/brain-write.sh publish "$wt" "message"`. This commits in isolation and **pushes straight to remote `main` immediately** — connector surfaces see it live, other clones at their next pull; offline, the write lands on local `main` for `sync` to push later. (Clone devices only — connector surfaces commit via the GitHub API, which is already atomic.) Why + details: `docs/how-it-works.md`.
+3. Publish via the **worktree flow — never edit the shared clone directly** (two sessions on one device silently clobber each other): `wt=$(brain-write.sh open)` → make the edits inside `$wt` → `brain-write.sh publish "$wt" "message"` (the plugin puts the script on PATH; the `brain:write` skill does exactly this). Commits in isolation and **pushes straight to remote `main`**; offline, the write lands locally for `sync` later. Connector surfaces commit via the GitHub API instead. Why: `docs/how-it-works.md`.
 4. Don't record what a repo/codebase/git history already captures. Save what's **non-obvious and durable**.
 5. Update existing notes instead of creating near-duplicates; delete notes that turn out to be wrong.
 6. Big moments / end of a meaningful session → consider a dated `journal/` entry. This is how the relationship accumulates.
 
-## The to-do list (standing chores & reminders)
-- `TODO.md` (repo root) is {{YOUR_NAME}}'s **single to-do list** — recurring maintenance, one-shot reminders, follow-ups. Full mechanism: `conventions/todo-list.md`.
-- **Once a day** (frontmatter `last-surfaced` < today): after handling what {{YOUR_NAME}} actually asked — never instead of it, and not when the session is clearly urgent — read `TODO.md`; if items are due (`next:` ≤ today; judgment on `when:` for uncached items), append a compact digest (all due items, one line each) and stamp `last-surfaced` via the write protocol. Saying **"todos"** opens the full list any time.
-- Responses: **go** → execute where capable per the item's `needs:` · **later** → new `next:` hint · **mute** / **done** / **add …** → edit the note. "Remind me to X" anywhere = add.
-
-## Idea capture (zero friction)
-{{YOUR_NAME}} drops an idea on any surface — "idea: …" or just describing one — and Claude **files it immediately**: `ideas/<category>/<kebab-slug>.md`, frontmatter `name`/`description`/`type: idea`, body in their words. Reply is one line: "filed → ideas/apps/overlay-translator". New categories propose-first. Full protocol: `conventions/idea-capture.md`.
-
-## Profile evaluation (the evidence-based living profile)
-When {{YOUR_NAME}}'s **words, decisions, or credentials** in a session are hard evidence about who they are, how they work, or what they know (rules in `conventions/profile-evaluation.md`, incl. the knowledge-provenance exclusion — Claude-supplied knowledge never counts), append a dated one-liner to the `## Evidence log` in `identity/profile.md` (write protocol) and reply with one line: "profiled → <what was noted>". **Facts only in-session** — deductions happen solely in the consolidation pass (offered when the log hits ~10 entries).
+## Standing mechanisms (skills on Claude Code, conventions everywhere)
+- **To-do list** — `TODO.md` is the single list; "todos", "remind me to …", digest answers → skill `brain:todos`. Rules: `conventions/todo-list.md`.
+- **Idea capture** — "idea: …" or any described idea → skill `brain:idea` files it immediately. Rules: `conventions/idea-capture.md`.
+- **Living profile** — hard evidence about {{YOUR_NAME}} in a session → skill `brain:profile` appends to `identity/profile.md`'s evidence log. Rules: `conventions/profile-evaluation.md`.
+Surfaces without the plugin (claude.ai, phone, cloud) follow the convention files directly.
 
 ## Secrets — NEVER store secret values here
 - The brain stores **pointers only**: e.g. *"API key → password manager item 'Acme prod'"* or *"in the gitignored `.env` of that repo"*.
