@@ -1,6 +1,6 @@
 ---
 name: idea
-description: File an idea into the brain the moment the user drops one — "idea: …" or just describing something they might build. Zero ceremony, one-line confirmation.
+description: 'File an idea into the brain the moment the user drops one — "idea: …" or just describing something they might build. Zero ceremony, one-line confirmation.'
 argument-hint: "<the idea, in the user's words>"
 ---
 
