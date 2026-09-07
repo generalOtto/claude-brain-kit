@@ -95,7 +95,7 @@ ideas/         idea seeds, filed by category the moment you say "idea: …"
 pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
 plugins/       brain/ (the Claude Code plugin: sync hook, brain-write.sh, skills)
-               · brain-voice/ (registers your Voice Brain server, if needed)
+               · brain-remote/ (registers your brain MCP server for clone-less sessions, if needed)
 tools/         voice-brain/ (the optional voice/connector MCP server)
 tests/         the plugin's test suite
 TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"

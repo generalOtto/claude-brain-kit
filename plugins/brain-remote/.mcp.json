@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "brain-remote": {
+      "type": "http",
+      "url": "${user_config.brain_remote_url}"
+    }
+  }
+}

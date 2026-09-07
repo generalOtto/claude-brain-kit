@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "voice-brain": {
-      "type": "http",
-      "url": "${user_config.voice_brain_url}"
-    }
-  }
-}

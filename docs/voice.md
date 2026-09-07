@@ -68,7 +68,7 @@ Re-running the script is safe: existing secrets and the subdomain are kept.
 **Claude Code:** MCP servers added on claude.ai are available in Claude Code
 automatically when it is signed in with the same claude.ai account (not with
 API-key/Bedrock/Vertex auth) — check `claude mcp list`. If it is not there:
-`claude plugin install brain-voice@claude-brain-kit` and paste the URL when prompted
+`claude plugin install brain-remote@claude-brain-kit` and paste the URL when prompted
 (kept out of settings.json — in the macOS Keychain, or `~/.claude/.credentials.json`
 elsewhere).
 

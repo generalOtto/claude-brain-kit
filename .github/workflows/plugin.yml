@@ -27,4 +27,4 @@ jobs:
           npm install -g @anthropic-ai/claude-code
           claude plugin validate --strict .
           claude plugin validate --strict plugins/brain
-          claude plugin validate --strict plugins/brain-voice
+          claude plugin validate --strict plugins/brain-remote
