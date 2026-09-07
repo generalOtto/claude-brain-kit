@@ -9,7 +9,7 @@ export type AppendNote = (path: string, content: string, section: string | undef
 export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appendNote?: AppendNote) {
   return createMcpHandler(() => {
     const server = new McpServer(
-      { name: "voice-brain", version: "1.3.0" },
+      { name: "brain-remote", version: "1.4.0" },
       {
         instructions:
           "This server is the user's brain (their private notes repo). Voice etiquette, " +

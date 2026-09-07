@@ -23,7 +23,7 @@ export function makeGitData(opts: {
     accept: "application/vnd.github+json",
     authorization: `Bearer ${token}`,
     "x-github-api-version": GITHUB_API_VERSION,
-    "user-agent": "voice-brain-mcp",
+    "user-agent": "brain-remote-mcp",
     "content-type": "application/json",
   };
 
@@ -55,7 +55,7 @@ export function makeGitData(opts: {
       }
       const tree = await json("POST", `${base}/trees`, { base_tree: baseTreeSha, tree: entries });
       const commit = await json("POST", `${base}/commits`, {
-        message: `${message}\n\nvia voice-brain-mcp`,
+        message: `${message}\n\nvia brain-remote-mcp`,
         tree: tree.sha,
         parents: [parentCommitSha],
       });

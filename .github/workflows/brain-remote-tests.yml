@@ -1,25 +1,25 @@
-# The kit's one piece of real code (tools/voice-brain) gets a real test gate.
+# The kit's one piece of real code (tools/brain-remote) gets a real test gate.
 # Scoped by path filter, so brains built from this template only run it when
 # they actually touch the server.
-name: voice-brain tests
+name: brain-remote tests
 on:
   push:
-    paths: ["tools/voice-brain/**"]
+    paths: ["tools/brain-remote/**"]
   pull_request:
-    paths: ["tools/voice-brain/**"]
+    paths: ["tools/brain-remote/**"]
 jobs:
   test:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tools/voice-brain
+        working-directory: tools/brain-remote
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: tools/voice-brain/package-lock.json
+          cache-dependency-path: tools/brain-remote/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test

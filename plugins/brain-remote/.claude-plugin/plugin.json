@@ -1,7 +1,7 @@
 {
   "name": "brain-remote",
   "version": "1.0.0",
-  "description": "Remote brain access for Claude Code sessions without a local clone: registers your self-hosted brain MCP server (deployed from tools/voice-brain). Only needed when `claude mcp list` does not already show it.",
+  "description": "Remote brain access for Claude Code sessions without a local clone: registers your self-hosted brain MCP server (deployed from tools/brain-remote). Only needed when `claude mcp list` does not already show it.",
   "author": { "name": "claude-brain-kit" },
   "homepage": "https://github.com/generalOtto/claude-brain-kit",
   "license": "MIT",
@@ -9,7 +9,7 @@
     "brain_remote_url": {
       "type": "string",
       "title": "Brain MCP server URL",
-      "description": "The full URL printed by tools/voice-brain/setup.sh — https://<host>/mcp/<secret>. The secret path IS the credential; it is kept out of settings.json — in the macOS Keychain, or ~/.claude/.credentials.json elsewhere.",
+      "description": "The full URL printed by tools/brain-remote/setup.sh — https://<host>/mcp/<secret>. The secret path IS the credential; it is kept out of settings.json — in the macOS Keychain, or ~/.claude/.credentials.json elsewhere.",
       "sensitive": true,
       "required": true
     }

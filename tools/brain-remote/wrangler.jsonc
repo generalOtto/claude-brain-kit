@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "voice-brain-mcp",
+  "name": "brain-remote-mcp", // renamed from voice-brain-mcp 2026-09-07 — an existing deployment is a NEW Worker under this name: re-run setup.sh (secrets), move the custom domain, delete the old Worker
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-01",
   // No request logging anywhere, by design — logs would record the

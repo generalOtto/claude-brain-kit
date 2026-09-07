@@ -54,7 +54,7 @@ describe("makeGitData", () => {
     ]);
     const commit = calls.find((c) => c.url.endsWith("/git/commits"))!.body;
     expect(commit.parents).toEqual(["p"]);
-    expect(commit.message).toBe("msg\n\nvia voice-brain-mcp");
+    expect(commit.message).toBe("msg\n\nvia brain-remote-mcp");
   });
 
   it("updateRef returns ok on 200 and race on 422, never force", async () => {

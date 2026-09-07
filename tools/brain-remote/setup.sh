@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# voice-brain-mcp — zero-copy-paste first-time setup for Cloudflare Workers.
+# brain-remote-mcp — zero-copy-paste first-time setup for Cloudflare Workers.
 #
 #   bash setup.sh                 # do everything; safe to re-run (existing
 #                                 # secrets and subdomain are left untouched)
@@ -161,7 +161,7 @@ if ! WRANGLER deploy ${NAME_ARGS[@]+"${NAME_ARGS[@]}"} 2>&1 | tee "$DEPLOY_LOG";
 fi
 WORKER_URL="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' "$DEPLOY_LOG" | head -1 || true)"
 rm -f "$DEPLOY_LOG"
-[ -n "$WORKER_URL" ] || { [ -n "$SUBDOMAIN" ] && WORKER_URL="https://${WORKER_NAME:-voice-brain-mcp}.$SUBDOMAIN.workers.dev"; }
+[ -n "$WORKER_URL" ] || { [ -n "$SUBDOMAIN" ] && WORKER_URL="https://${WORKER_NAME:-brain-remote-mcp}.$SUBDOMAIN.workers.dev"; }
 [ -n "$WORKER_URL" ] || die "no workers.dev URL — register a subdomain (re-run me) and retry"
 say "✓ deployed: $WORKER_URL"
 

@@ -50,7 +50,7 @@ export function makeBrainFetcher(opts: {
           accept: "application/vnd.github.raw+json",
           authorization: `Bearer ${token}`,
           "x-github-api-version": GITHUB_API_VERSION,
-          "user-agent": "voice-brain-mcp",
+          "user-agent": "brain-remote-mcp",
         },
       },
       `GET ${clean}`,

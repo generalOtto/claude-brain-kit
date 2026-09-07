@@ -20,7 +20,7 @@ own brain.
 - 📱 **Every Claude surface** — Claude Code on your machines, plus claude.ai in the
   browser and the phone app via the GitHub MCP connector: your phone chat can recall
   your notes and commit new memories.
-- 🎙️ **Voice mode too** — an optional tiny MCP server of your own (`tools/voice-brain/`,
+- 🎙️ **Voice mode too** — an optional tiny MCP server of your own (`tools/brain-remote/`,
   deployed free on Cloudflare Workers in one command) gives voice chats full recall
   and protocol-true writes: atomic note+index commits with guardrails, from any
   connector surface.
@@ -96,7 +96,7 @@ pointers/      where external things live (incl. the secrets policy)
 journal/       dated log of the sessions that mattered
 plugins/       brain/ (the Claude Code plugin: sync hook, brain-write.sh, skills)
                · brain-remote/ (registers your brain MCP server for clone-less sessions, if needed)
-tools/         voice-brain/ (the optional voice/connector MCP server)
+tools/         brain-remote/ (the optional remote MCP server — voice mode + connector writes)
 tests/         the plugin's test suite
 TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"
 INDEX.md       the catalog recall runs on
@@ -141,8 +141,8 @@ script the Bash tool runs from PATH. No symlinks, no Developer Mode, no python.
 
 **Does my brain repo run these GitHub Actions?** Three: a gitleaks scan on every
 push as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't
-want it — not recommended), the voice-brain test suite (only when you touch
-`tools/voice-brain/`), and plugin validation + tests (only when you touch
+want it — not recommended), the brain-remote test suite (only when you touch
+`tools/brain-remote/`), and plugin validation + tests (only when you touch
 `plugins/`, `.claude-plugin/`, or `tests/`).
 
 **Can I customize the skills?** Yes: your brain repo carries the plugin source under

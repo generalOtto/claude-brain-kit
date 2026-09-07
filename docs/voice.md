@@ -3,7 +3,7 @@
 The [claude.ai + mobile guide](claude-ai-and-mobile.md) wires the brain into text
 chats through the GitHub connector. This page covers the gap that connector cannot
 close — **voice mode** — with a tiny MCP server of your own, deployed free on
-Cloudflare Workers in one command: `tools/voice-brain/`.
+Cloudflare Workers in one command: `tools/brain-remote/` (born for voice mode, hence this page; the plugin that registers it in Claude Code is `brain-remote`).
 
 > Verified August 2026 on a live daily-driver brain. Connector features move fast;
 > if a step doesn't match what you see, please open an issue.
@@ -42,14 +42,14 @@ on the fly if you don't have one), and a claude.ai plan that allows **custom
 connectors** (paid plans; the directory-connector tier isn't enough here).
 
 ```bash
-bash <your-clone>/tools/voice-brain/setup.sh
+bash <your-clone>/tools/brain-remote/setup.sh
 ```
 
 The script derives everything it can instead of asking you to paste it: your
 Cloudflare account ID (from wrangler's login session), a `workers.dev` subdomain
 (auto-generated and registered if your account has none), the MCP path secret
 (generated), and **your brain repo itself** — read from this repo's git remote,
-since `tools/voice-brain/` lives inside your brain. The one thing you paste is a
+since `tools/brain-remote/` lives inside your brain. The one thing you paste is a
 GitHub fine-grained PAT (the script prints the exact settings: your brain repo
 only, Contents read+write) — and it's **verified against GitHub before it's
 stored**, so a bad paste fails on the spot, not in production.
@@ -58,7 +58,7 @@ At the end it prints (and, when a clipboard tool is available, copies) your
 connector URL:
 
 ```
-https://voice-brain-mcp.<subdomain>.workers.dev/mcp/<secret>
+https://brain-remote-mcp.<subdomain>.workers.dev/mcp/<secret>
 ```
 
 Add it on **claude.ai → Settings → Connectors → Add custom connector**. Done —
@@ -86,7 +86,7 @@ elsewhere).
   request).
 - **Blast radius = one repo.** The PAT is fine-grained and scoped to the brain repo
   only; it lives as a Worker secret, never in code or config. Rotate the path
-  secret any time with `bash <your-clone>/tools/voice-brain/setup.sh --rotate-secret` (then update the connector
+  secret any time with `bash <your-clone>/tools/brain-remote/setup.sh --rotate-secret` (then update the connector
   URL); kill the whole thing with `npx wrangler delete`.
 - **The server won't commit secrets.** Secret-shaped content (tokens, keys,
   credential assignments) is refused server-side — same policy as the rest of the

@@ -33,4 +33,4 @@ const app = makeApp({
 });
 
 const port = Number(process.env.PORT ?? 3000);
-app.listen(port, () => console.log(`voice-brain-mcp listening on :${port}`));
+app.listen(port, () => console.log(`brain-remote-mcp listening on :${port}`));
