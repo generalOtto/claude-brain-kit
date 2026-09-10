@@ -20,6 +20,7 @@ regexes = [
   '''`[A-Z][A-Z0-9_]{3,}`''',                         # ALL-CAPS env-var / placeholder names
   '''(?i)(password manager|bitwarden|1password|keepass|vaultwarden)\s+(item|entry|record)''',  # pointer phrasing: "→ password manager item `name`"
   '''`[A-Za-z0-9_.-]*\.(env|conf|md|py|json|yml|toml|gitignore|gitleaks)[a-z.]*`''',  # backticked filenames/dotfiles
+  '''`brain-[a-z][a-z-]*`''',                          # backticked brain-* command names (brain-secret, brain-write.sh, ...), never secret material
 ]
 
 [[rules]]
