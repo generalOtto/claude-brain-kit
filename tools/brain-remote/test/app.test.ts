@@ -148,6 +148,36 @@ describe("MCP over streamable HTTP", () => {
     expect(body).not.toContain('"type":"resource"');
   });
 
+  it("brain_index omits the bootloader when the Claude Code surface header is present", async () => {
+    const res = await rpc(toolsCall("brain_index", {}), undefined, { "x-brain-surface": "claude-code" });
+    const body = await res.text();
+    expect(body).not.toContain("BOOT");
+    expect(body).toContain("Bootloader (CLAUDE.md) omitted");
+    expect(body).toContain("CATALOG");
+  });
+
+  it("brain_index keeps the bootloader for an unknown surface header value", async () => {
+    const res = await rpc(toolsCall("brain_index", {}), undefined, { "x-brain-surface": "something-else" });
+    expect(await res.text()).toContain("BOOT");
+  });
+
+  it("bootloader: true beats the surface header", async () => {
+    const res = await rpc(toolsCall("brain_index", { bootloader: true }), undefined, { "x-brain-surface": "claude-code" });
+    expect(await res.text()).toContain("== CLAUDE.md ==");
+  });
+
+  it("bootloader: false beats the absent header", async () => {
+    const res = await rpc(toolsCall("brain_index", { bootloader: false }));
+    const body = await res.text();
+    expect(body).not.toContain("BOOT");
+    expect(body).toContain("CATALOG");
+  });
+
+  it("brain_index description teaches the bootloader override", async () => {
+    const res = await rpc({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+    expect(await res.text()).toContain("pass bootloader: true");
+  });
+
   it("healthz answers 200 without auth", async () => {
     const res = await fetch(`${base}/healthz`);
     expect(res.status).toBe(200);

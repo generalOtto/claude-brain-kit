@@ -6,10 +6,18 @@ import { brainIndex, brainRead } from "./tools.js";
 export type WriteNote = (path: string, content: string, message: string) => Promise<string>;
 export type AppendNote = (path: string, content: string, section: string | undefined, message: string) => Promise<string>;
 
+export const SURFACE_HEADER = "x-brain-surface";
+export const SURFACE_CLAUDE_CODE = "claude-code";
+
 export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appendNote?: AppendNote) {
-  return createMcpHandler(() => {
+  return createMcpHandler((ctx) => {
+    // The plugin's .mcp.json marks Claude Code callers; there the bootloader is
+    // already in context via the symlinked CLAUDE.md, so it is dead weight.
+    // Every claude.ai connector sends no header and keeps today's full result.
+    const surface = ctx.requestInfo?.headers.get(SURFACE_HEADER) ?? "";
+    const defaultBootloader = surface !== SURFACE_CLAUDE_CODE;
     const server = new McpServer(
-      { name: "brain-remote", version: "1.4.0" },
+      { name: "brain-remote", version: "1.5.0" },
       {
         instructions:
           "This server is the user's brain (their private notes repo). Voice etiquette, " +
@@ -24,14 +32,20 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
       "brain_index",
       {
         description:
-          "Call this FIRST, before reading anything else. Returns the brain bootloader " +
-          "(CLAUDE.md: who the user is, how recall works) plus INDEX.md, the catalog of every " +
-          "brain note with one-line descriptions. Use the catalog to pick which notes to read. " +
-          "Voice sessions: never speak while a tool call is running — finish your sentence, " +
-          "call, then continue.",
-        inputSchema: z.object({}),
+          "Call this FIRST, before reading anything else. Returns INDEX.md, the catalog of every " +
+          "brain note with one-line descriptions, plus — unless this surface already has it — the " +
+          "brain bootloader (CLAUDE.md: who the user is, how recall works). If the brain bootloader " +
+          "is not already in your context, pass bootloader: true. Use the catalog to pick which " +
+          "notes to read. Voice sessions: never speak while a tool call is running — finish your " +
+          "sentence, call, then continue.",
+        inputSchema: z.object({
+          bootloader: z.boolean().optional().describe(
+            "Include CLAUDE.md. Default: yes for connector surfaces, no for Claude Code callers " +
+            "(they already have it). Set true if the bootloader is not in your context.",
+          ),
+        }),
       },
-      async () => brainIndex(fetchFile),
+      async ({ bootloader }) => brainIndex(fetchFile, { bootloader: bootloader ?? defaultBootloader }),
     );
     server.registerTool(
       "brain_read",
