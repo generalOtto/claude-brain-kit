@@ -7,7 +7,9 @@ pass `bootloader: true` on a surface that lacks it. Catalog descriptions are cap
 chars server-side. New `brain_edit` tool (exact single-match find/replace on one existing
 file, INDEX line refreshed when title/description change). `brain_append` section names now
 match a heading's leading words ("Known dead weight" finds "## Known dead weight (pending …)").
-Journal notes index into `journal/INDEX.md` when the brain keeps that sub-index.
+Journal notes index into `journal/INDEX.md` when the brain keeps that sub-index. Connector
+callers with no header see one difference from 1.4: catalog descriptions longer than 120
+characters are shortened with an ellipsis.
 
 ## 1.0.0 — 2026-09-07
 Renamed from `brain-voice` (shipped 2026-09-04, never installed anywhere). The plugin registers

@@ -1,5 +1,4 @@
 import { updateIndex, indexFileFor, isIndexed, indexLineFor } from "./brainindex.js";
-import type { IndexUpdate } from "./brainindex.js";
 import { validateWrite, validateAppend, validateEdit, MAX_CHARS } from "./validate.js";
 import { spliceAppend } from "./splice.js";
 import { spliceEdit } from "./edit.js";
@@ -14,36 +13,56 @@ type BuildOutcome =
   | { files: { path: string; content: string }[]; message: string; success: (shortSha: string) => string }
   | { refuse: string };
 
-type IndexState = IndexUpdate | { kind: "index-missing"; file: string };
+type IndexState =
+  | { kind: "updated"; content: string }
+  | { kind: "unmapped" }
+  | { kind: "section-missing"; section: string; file: string }
+  | { kind: "index-missing"; file: string };
 type IndexOutcome = { refuse: string } | { idx: IndexState; extra: { path: string; content: string }[] };
 
 // One place decides which index file a note belongs to, fetches it at the
 // commit's head, and produces the extra file for the commit. Shared by
 // brain_write and brain_edit so the two cannot drift.
+//
+// journal/ notes normally index into journal/INDEX.md; brains that predate
+// that sub-index (or lost it) don't have the file. In that case fall back to
+// the root INDEX.md, which still carries a "## journal/" section — the line
+// lands there exactly as it did before the sub-index existed. Only when the
+// root is also missing do we give up and say so.
 async function refreshIndex(
   fetchFile: BrainFetcher,
   commitSha: string,
   notePath: string,
   noteContent: string,
 ): Promise<IndexOutcome> {
-  const indexPath = indexFileFor(notePath);
-  let current: string;
-  try {
-    current = await fetchFile(indexPath, commitSha);
-  } catch (err) {
-    if (err instanceof BrainFileNotFound) return { idx: { kind: "index-missing", file: indexPath }, extra: [] };
-    throw err;
+  const primary = indexFileFor(notePath);
+  const candidates = primary === "INDEX.md" ? [primary] : [primary, "INDEX.md"];
+  for (const indexPath of candidates) {
+    let current: string;
+    try {
+      current = await fetchFile(indexPath, commitSha);
+    } catch (err) {
+      if (err instanceof BrainFileNotFound) continue;
+      throw err;
+    }
+    if (current.endsWith(TRUNCATION_NOTICE)) {
+      return { refuse: `${indexPath} too large to update safely from here — write it from a text session.` };
+    }
+    const update = updateIndex(current, notePath, noteContent);
+    if (update.kind === "updated") {
+      return { idx: update, extra: [{ path: indexPath, content: update.content }] };
+    }
+    if (update.kind === "section-missing") {
+      return { idx: { kind: "section-missing", section: update.section, file: indexPath }, extra: [] };
+    }
+    return { idx: update, extra: [] }; // unmapped
   }
-  if (current.endsWith(TRUNCATION_NOTICE)) {
-    return { refuse: `${indexPath} too large to update safely from here — write it from a text session.` };
-  }
-  const idx = updateIndex(current, notePath, noteContent);
-  return { idx, extra: idx.kind === "updated" ? [{ path: indexPath, content: idx.content }] : [] };
+  return { idx: { kind: "index-missing", file: candidates[candidates.length - 1] }, extra: [] };
 }
 
 function indexSuffix(idx: IndexState): string {
   if (idx.kind === "updated") return " (+ INDEX line updated)";
-  if (idx.kind === "section-missing") return ` — INDEX has no "${idx.section}" section, so its line was not added; add it from a text session`;
+  if (idx.kind === "section-missing") return ` — ${idx.file} has no "${idx.section}" section, so its line was not added; add it from a text session`;
   if (idx.kind === "index-missing") return ` — ${idx.file} does not exist, so its line was not added; create it from a text session`;
   return "";
 }
@@ -96,7 +115,9 @@ export function makeBrainWriter(deps: { gitdata: GitData; fetchFile: BrainFetche
         }
       }
 
-      const r = await refreshIndex(fetchFile, head.commitSha, v.clean, content);
+      const r: IndexOutcome = isIndexed(v.clean)
+        ? await refreshIndex(fetchFile, head.commitSha, v.clean, content)
+        : { idx: { kind: "unmapped" }, extra: [] };
       if ("refuse" in r) return r;
       return {
         files: [{ path: v.clean, content }, ...r.extra],

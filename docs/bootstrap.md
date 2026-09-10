@@ -54,10 +54,11 @@ When unsure, ask: "satellite or full?"
      open only the notes matching the task. Read its CLAUDE.md when protocol details
      matter. The brain wins over assumptions.
    - **Write:** when something durable is learned, use the Voice Brain connector's
-     `brain_write` / `brain_append` if it's on this surface — protocol-true: one atomic
-     commit carrying the note AND its INDEX line (see `docs/voice.md`). Otherwise commit
-     through the GitHub connector, following the repo CLAUDE.md write protocol (one
-     small note + INDEX line).
+     `brain_write` / `brain_append` / `brain_edit` if it's on this surface — protocol-true:
+     one atomic commit carrying the note AND its INDEX line (see `docs/voice.md`);
+     `brain_edit` is the cheap path for a one-line change (exact, unique find/replace
+     in an existing note). Otherwise commit through the GitHub connector, following
+     the repo CLAUDE.md write protocol (one small note + INDEX line).
    - **Secrets:** NEVER store secret values in the brain — pointers only.
    - This is a satellite device (no local clone). Full instructions: repo
      `docs/bootstrap.md`.

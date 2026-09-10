@@ -67,7 +67,7 @@ https://brain-remote-mcp.<subdomain>.workers.dev/mcp/<secret>
 ```
 
 Add it on **claude.ai → Settings → Connectors → Add custom connector**. Done —
-voice mode, text chats, and the mobile apps can now all use the four tools.
+voice mode, text chats, and the mobile apps can now all use the five tools.
 Re-running the script is safe: existing secrets and the subdomain are kept.
 
 **Claude Code:** MCP servers added on claude.ai are available in Claude Code

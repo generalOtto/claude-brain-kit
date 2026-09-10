@@ -28,6 +28,7 @@ export function validatePath(path: string): ValidateResult {
     return no(`Path "${clean}" contains empty or "." segments.`);
   }
   if (clean === "CLAUDE.md") return no("CLAUDE.md is the bootloader — edit it from a text session, never by connector write.");
+  if (clean === "INDEX.md" || clean.endsWith("/INDEX.md")) return no(`${clean} is a catalog the server maintains — edit it from a text session, never by connector write.`);
   if (clean.startsWith("tools/") || clean.startsWith(".github/")) return no(`"${clean}" is under a protected directory (tools/, .github/) — not writable from a connector.`);
   if (clean.endsWith(".sh") || clean === ".gitignore" || clean.endsWith(".base")) return no(`"${clean}" is executable/config surface — not writable from a connector.`);
   if (!clean.endsWith(".md")) return no(`Only markdown files are writable; "${clean}" is not .md.`);

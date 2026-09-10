@@ -75,6 +75,19 @@ describe("validateWrite", () => {
     expect(validateWrite("journal/2026-08-17-x.md", FM).ok).toBe(true);
     expect(validateWrite("TODO.md", "# TODO\n- item\n").ok).toBe(true);
   });
+
+  it.each(["INDEX.md", "journal/INDEX.md", "knowledge/INDEX.md"])(
+    "refuses %s — INDEX.md is a catalog the server maintains, at any depth",
+    (p) => {
+      const r = validateWrite(p, FM);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.reason).toMatch(/catalog the server maintains/i);
+    },
+  );
+
+  it("still accepts a note that merely contains INDEX in its name", () => {
+    expect(validateWrite("knowledge/index-notes.md", FM).ok).toBe(true);
+  });
 });
 
 describe("path charset tightening (v1.2)", () => {

@@ -4,13 +4,14 @@ import { TRUNCATION_NOTICE, BrainFileNotFound } from "../src/gh.js";
 import type { GitData } from "../src/gitdata.js";
 
 const FM = "---\nname: n\ndescription: d\ntype: reference\n---\n\n# N\nbody\n";
-const INDEX = "# INDEX\n\n## knowledge/ — facts\n- [Old](knowledge/old.md) — o\n";
+const INDEX = "# INDEX\n\n## knowledge/ — facts\n- [Old](knowledge/old.md) — o\n\n## journal/ — what we did together\n- [2026-01-01 — old](journal/2026-01-01-old.md) — o\n";
 
 const JOURNAL_INDEX = "# journal INDEX\n\n## journal/ — what we did together\n- [2026-01-01 — old](journal/2026-01-01-old.md) — o\n";
 
-function fakeDeps(opts: { races?: number; todo?: string; journalIndex?: string | null } = {}) {
+function fakeDeps(opts: { races?: number; todo?: string; journalIndex?: string | null; rootIndex?: string | null } = {}) {
   let races = opts.races ?? 0;
   const committed: any[] = [];
+  const reads: string[] = [];
   let headN = 0;
   const gitdata: GitData = {
     async getHead() { headN++; return { commitSha: `head${headN}`, treeSha: `tree${headN}` }; },
@@ -18,7 +19,11 @@ function fakeDeps(opts: { races?: number; todo?: string; journalIndex?: string |
     async updateRef() { if (races > 0) { races--; return "race"; } return "ok"; },
   };
   const fetchFile = async (path: string, ref?: string) => {
-    if (path === "INDEX.md") return INDEX;
+    reads.push(path);
+    if (path === "INDEX.md") {
+      if (opts.rootIndex === null) throw new BrainFileNotFound("No such file in the brain: INDEX.md");
+      return opts.rootIndex ?? INDEX;
+    }
     if (path === "journal/INDEX.md") {
       if (opts.journalIndex === null) throw new BrainFileNotFound("No such file in the brain: journal/INDEX.md");
       return opts.journalIndex ?? JOURNAL_INDEX;
@@ -26,7 +31,7 @@ function fakeDeps(opts: { races?: number; todo?: string; journalIndex?: string |
     if (path === "TODO.md" && opts.todo !== undefined) return opts.todo;
     throw new Error(`unexpected read: ${path}@${ref}`);
   };
-  return { gitdata, fetchFile, committed };
+  return { gitdata, fetchFile, committed, reads };
 }
 
 describe("makeBrainWriter", () => {
@@ -47,6 +52,12 @@ describe("makeBrainWriter", () => {
     const out = await makeBrainWriter(d)("ideas/apps/x.md", FM, "idea");
     expect(out).toMatch(/committed/i);
     expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["ideas/apps/x.md"]);
+  });
+
+  it("unmapped paths never read the INDEX at all (F4: gated on isIndexed)", async () => {
+    const d = fakeDeps();
+    await makeBrainWriter(d)("ideas/apps/x.md", FM, "idea");
+    expect(d.reads).not.toContain("INDEX.md");
   });
 
   it("refusals return text without touching git", async () => {
@@ -94,7 +105,7 @@ describe("makeBrainWriter", () => {
     const d = fakeDeps();
     const out = await makeBrainWriter(d)("devices/new-box.md", FM, "add device");
     expect(out).toMatch(/committed/i);
-    expect(out).toContain('INDEX has no "## devices/" section');
+    expect(out).toContain('INDEX.md has no "## devices/" section');
     expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["devices/new-box.md"]);
   });
 
@@ -135,12 +146,23 @@ describe("makeBrainWriter", () => {
     expect(d.committed[0].files[1].content.indexOf("2026-01-01-old")).toBeLessThan(d.committed[0].files[1].content.indexOf("2026-09-10-a-day"));
   });
 
-  it("a missing journal/INDEX.md still commits the note and says the line was not added", async () => {
+  it("journal note with no sub-index falls back to the root `## journal/` section", async () => {
     const d = fakeDeps({ journalIndex: null });
     const fm = "---\nname: j\ndescription: a day\ntype: reference\n---\n\n# Day\nbody\n";
     const out = await makeBrainWriter(d)("journal/2026-09-10-a-day.md", fm, "journal");
     expect(out).toMatch(/committed/i);
-    expect(out).toContain("journal/INDEX.md does not exist");
+    expect(out).toContain("INDEX line updated");
+    expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["journal/2026-09-10-a-day.md", "INDEX.md"]);
+    expect(d.committed[0].files[1].content).toContain("## journal/");
+    expect(d.committed[0].files[1].content).toContain("- [Day](journal/2026-09-10-a-day.md) — a day");
+  });
+
+  it("both journal/INDEX.md and root INDEX.md missing: commits only the note, says INDEX.md does not exist", async () => {
+    const d = fakeDeps({ journalIndex: null, rootIndex: null });
+    const fm = "---\nname: j\ndescription: a day\ntype: reference\n---\n\n# Day\nbody\n";
+    const out = await makeBrainWriter(d)("journal/2026-09-10-a-day.md", fm, "journal");
+    expect(out).toMatch(/committed/i);
+    expect(out).toContain("INDEX.md does not exist");
     expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["journal/2026-09-10-a-day.md"]);
   });
 });
