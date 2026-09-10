@@ -5,11 +5,12 @@ import { brainIndex, brainRead } from "./tools.js";
 
 export type WriteNote = (path: string, content: string, message: string) => Promise<string>;
 export type AppendNote = (path: string, content: string, section: string | undefined, message: string) => Promise<string>;
+export type EditNote = (path: string, find: string, replace: string, message: string) => Promise<string>;
 
 export const SURFACE_HEADER = "x-brain-surface";
 export const SURFACE_CLAUDE_CODE = "claude-code";
 
-export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appendNote?: AppendNote) {
+export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appendNote?: AppendNote, editNote?: EditNote) {
   return createMcpHandler((ctx) => {
     // The plugin's .mcp.json marks Claude Code callers; there the bootloader is
     // already in context via the symlinked CLAUDE.md, so it is dead weight.
@@ -106,6 +107,32 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
         },
         async ({ path, content, section, message }) => ({
           content: [{ type: "text", text: await appendNote(path, content, section, message) }],
+        }),
+      );
+    }
+    if (editNote) {
+      server.registerTool(
+        "brain_edit",
+        {
+          description:
+            "Replace ONE exact piece of text in ONE existing brain file — the fit for small changes " +
+            "(flip a to-do's next date, fix a line, update a status) that must not cost a full-file " +
+            "brain_write. `find` must occur exactly once in the file, matched verbatim (whitespace " +
+            "and punctuation included, no regex): brain_read the file first and copy the text. " +
+            "`replace` may be empty to delete the span. If the edit changes a note's title or " +
+            "description, its INDEX line is refreshed in the same commit. Server-enforced: the file " +
+            "must exist (create notes with brain_write), same path rules as brain_write, no " +
+            "secret-shaped content, 100k result cap. For adding items use brain_append. Refusals " +
+            "come back as text explaining what to fix.",
+          inputSchema: z.object({
+            path: z.string().describe("Repo-relative path of an EXISTING file, e.g. TODO.md or knowledge/some-gotcha.md"),
+            find: z.string().describe("The exact text to replace — must occur exactly once"),
+            replace: z.string().describe("The replacement text; empty string deletes the matched text"),
+            message: z.string().describe("Commit message, imperative and specific"),
+          }),
+        },
+        async ({ path, find, replace, message }) => ({
+          content: [{ type: "text", text: await editNote(path, find, replace, message) }],
         }),
       );
     }

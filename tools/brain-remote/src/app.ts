@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import type { BrainFetcher } from "./gh.js";
 import { makeHandler } from "./server.js";
-import type { WriteNote, AppendNote } from "./server.js";
+import type { WriteNote, AppendNote, EditNote } from "./server.js";
 
 const sha = (s: string) => createHash("sha256").update(s).digest();
 const safeEqual = (a: string, b: string) => timingSafeEqual(sha(a), sha(b));
@@ -15,6 +15,7 @@ export function makeApp(opts: {
   headerToken?: string;
   writeNote?: WriteNote;
   appendNote?: AppendNote;
+  editNote?: EditNote;
 }) {
   const app = express();
   app.disable("x-powered-by");
@@ -32,7 +33,7 @@ export function makeApp(opts: {
   app.use((_err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     res.status(404).end();
   });
-  const node = toNodeHandler(makeHandler(opts.fetchFile, opts.writeNote, opts.appendNote));
+  const node = toNodeHandler(makeHandler(opts.fetchFile, opts.writeNote, opts.appendNote, opts.editNote));
 
   app.get("/healthz", (_req, res) => { res.status(200).send("ok"); });
 

@@ -1,6 +1,6 @@
 import type { BrainFetcher } from "./gh.js";
 import { makeHandler } from "./server.js";
-import type { WriteNote, AppendNote } from "./server.js";
+import type { WriteNote, AppendNote, EditNote } from "./server.js";
 
 // Mirror express.json({ limit: "1mb" }) — the bytes library parses "1mb" as
 // 1024 * 1024, and the limit is enforced on byte length.
@@ -28,8 +28,9 @@ export function makeWorkerFetch(opts: {
   headerToken?: string;
   writeNote?: WriteNote;
   appendNote?: AppendNote;
+  editNote?: EditNote;
 }): (request: Request) => Promise<Response> {
-  const handler = makeHandler(opts.fetchFile, opts.writeNote, opts.appendNote);
+  const handler = makeHandler(opts.fetchFile, opts.writeNote, opts.appendNote, opts.editNote);
   const notFound = () => new Response(null, { status: 404 });
 
   return async (request: Request): Promise<Response> => {

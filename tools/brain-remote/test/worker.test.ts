@@ -48,6 +48,8 @@ beforeAll(() => {
     writeNote: async (path, _content, message) => `Committed abc1234: ${path} (+ INDEX line updated). [msg=${message}]`,
     appendNote: async (path, _content, section, message) =>
       `Committed def5678: appended to ${path}${section !== undefined ? ` (section "${section}")` : ""}. [msg=${message}]`,
+    editNote: async (path, find, replace, message) =>
+      `Replaced 1 occurrence in ${path} — abc1234. [find=${find} replace=${replace} msg=${message}]`,
   });
 });
 
@@ -231,5 +233,36 @@ describe("worker entry env handling", () => {
     const res = await workerEntry.fetch(new Request(`${BASE}/healthz`), env);
     expect(res.status).toBe(500);
     expect(await res.text()).toContain("misconfigured");
+  });
+});
+
+describe("brain_edit over HTTP", () => {
+  it("is listed alongside the other tools", async () => {
+    const res = await rpc({ jsonrpc: "2.0", id: 30, method: "tools/list" });
+    const body = await res.text();
+    expect(body).toContain("brain_edit");
+    expect(body).toContain("exactly once");
+  });
+
+  it("returns the editor's text as a single text part with all four inputs passed through", async () => {
+    const res = await rpc(toolsCall("brain_edit", {
+      path: "TODO.md",
+      find: "**next:** 2026-09-14",
+      replace: "**next:** 2026-09-21",
+      message: "bump next",
+    }, 31));
+    const body = await res.text();
+    expect(body).toContain('"type":"text"');
+    expect(body).toContain("Replaced 1 occurrence in TODO.md");
+    expect(body).toContain("find=**next:** 2026-09-14");
+    expect(body).toContain("replace=**next:** 2026-09-21");
+    expect(body).toContain("msg=bump next");
+    expect(body).not.toContain('"type":"resource"');
+  });
+
+  it("rejects a call missing `find` at the schema level (no editor call)", async () => {
+    const res = await rpc(toolsCall("brain_edit", { path: "TODO.md", replace: "x", message: "m" }, 32));
+    const body = await res.text();
+    expect(body).not.toContain("Replaced 1 occurrence");
   });
 });

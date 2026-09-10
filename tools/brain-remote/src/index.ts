@@ -1,6 +1,6 @@
 import { makeApp } from "./app.js";
 import { makeBrainFetcher } from "./gh.js";
-import { makeBrainWriter, makeBrainAppender } from "./writeflow.js";
+import { makeBrainWriter, makeBrainAppender, makeBrainEditor } from "./writeflow.js";
 import { makeGitData } from "./gitdata.js";
 
 function need(name: string): string {
@@ -30,6 +30,7 @@ const app = makeApp({
   headerToken: process.env.AUTH_HEADER_TOKEN || undefined,
   writeNote: makeBrainWriter(writeDeps),
   appendNote: makeBrainAppender(writeDeps),
+  editNote: makeBrainEditor(writeDeps),
 });
 
 const port = Number(process.env.PORT ?? 3000);

@@ -1,5 +1,5 @@
 import { makeBrainFetcher } from "./gh.js";
-import { makeBrainWriter, makeBrainAppender } from "./writeflow.js";
+import { makeBrainWriter, makeBrainAppender, makeBrainEditor } from "./writeflow.js";
 import { makeGitData } from "./gitdata.js";
 import { makeWorkerFetch } from "./workerApp.js";
 
@@ -35,6 +35,7 @@ function build(env: Env): (request: Request) => Promise<Response> {
     headerToken: env.AUTH_HEADER_TOKEN || undefined,
     writeNote: makeBrainWriter(writeDeps),
     appendNote: makeBrainAppender(writeDeps),
+    editNote: makeBrainEditor(writeDeps),
   });
 }
 
