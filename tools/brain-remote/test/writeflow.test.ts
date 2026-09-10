@@ -165,4 +165,15 @@ describe("makeBrainWriter", () => {
     expect(out).toContain("INDEX.md does not exist");
     expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["journal/2026-09-10-a-day.md"]);
   });
+
+  it("journal note, journal/INDEX.md missing, root INDEX.md present but truncated: refuses, commits nothing", async () => {
+    const d = fakeDeps({
+      journalIndex: null,
+      rootIndex: "# INDEX\n\n## journal/ — what we did together\n" + TRUNCATION_NOTICE,
+    });
+    const fm = "---\nname: j\ndescription: a day\ntype: reference\n---\n\n# Day\nbody\n";
+    const out = await makeBrainWriter(d)("journal/2026-09-10-a-day.md", fm, "journal");
+    expect(out).toMatch(/too large/i);
+    expect(d.committed).toHaveLength(0);
+  });
 });

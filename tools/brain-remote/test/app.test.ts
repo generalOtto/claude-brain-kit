@@ -191,6 +191,7 @@ describe("brain_write over HTTP", () => {
     const res = await rpc({ jsonrpc: "2.0", id: 10, method: "tools/list" });
     const body = await res.text();
     expect(body).toContain("brain_write");
+    expect(body).toContain("wipe guard");
   });
 
   it("returns the writer's text as a single text part", async () => {
@@ -264,5 +265,8 @@ describe("brain_edit over HTTP", () => {
     const res = await rpc(toolsCall("brain_edit", { path: "TODO.md", replace: "x", message: "m" }, 32));
     const body = await res.text();
     expect(body).not.toContain("Replaced 1 occurrence");
+    expect(body).toContain('"isError":true');
+    expect(body).toMatch(/invalid/i);
+    expect(body).toContain("find");
   });
 });

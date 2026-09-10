@@ -110,4 +110,25 @@ describe("makeBrainEditor", () => {
     expect(await makeBrainEditor(d)("knowledge/n.md", "", "b", "x")).toContain("empty");
     expect(d.committed).toHaveLength(0);
   });
+
+  // Unlike append, edit performs plain string surgery with no inserted seam —
+  // `replace` lands exactly where `find` was. So a GitHub token can straddle
+  // the boundary directly: the file already carries the token's first 10
+  // chars, and the edit's replacement supplies the remaining 20.
+  it("refuses when a GitHub token straddles the edit seam", async () => {
+    const d = fakeDeps({ files: { "knowledge/n.md": "note: ghp_ABCDEFGHIJ@ end\n" } });
+    const out = await makeBrainEditor(d)("knowledge/n.md", "@", "KLMNOPQRSTUVWXYZ0123", "x");
+    expect(out).toMatch(/GitHub token/);
+    expect(d.committed).toHaveLength(0);
+  });
+
+  it("still accepts an unrelated edit when a secret-shaped string sits far (>200 chars) from the seam", async () => {
+    const farSecret = "ghp_" + "B".repeat(25);
+    const d = fakeDeps({
+      files: { "knowledge/n.md": `${farSecret}\n${"z".repeat(300)}\nOld line to edit\n` },
+    });
+    const out = await makeBrainEditor(d)("knowledge/n.md", "Old line to edit", "New line edited", "x");
+    expect(out).toMatch(/^Replaced 1 occurrence/);
+    expect(d.committed).toHaveLength(1);
+  });
 });

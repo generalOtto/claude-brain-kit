@@ -135,6 +135,7 @@ describe("MCP over streamable HTTP", () => {
     expect(body).toContain("brain_read");
     expect(body).toContain("brain_write");
     expect(body).toContain("brain_append");
+    expect(body).toContain("wipe guard");
   });
 
   it("brain_read returns a plain text part with the file body", async () => {
@@ -264,5 +265,8 @@ describe("brain_edit over HTTP", () => {
     const res = await rpc(toolsCall("brain_edit", { path: "TODO.md", replace: "x", message: "m" }, 32));
     const body = await res.text();
     expect(body).not.toContain("Replaced 1 occurrence");
+    expect(body).toContain('"isError":true');
+    expect(body).toMatch(/invalid/i);
+    expect(body).toContain("find");
   });
 });

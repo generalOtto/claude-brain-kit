@@ -105,4 +105,25 @@ describe("makeBrainAppender", () => {
     expect(out).toMatch(/failed/i);
     expect(out).toContain("500");
   });
+
+  // spliceAppend always inserts a blank line between the file's existing tail
+  // and the fragment, so a literal ghp_... token can never straddle an APPEND
+  // seam the way it can an EDIT seam. The credential-assignment pattern still
+  // straddles here because its regex tolerates whitespace (including the
+  // inserted blank line) between "token =" and the value.
+  it("refuses when a credential assignment straddles the append seam", async () => {
+    const d = fakeDeps({ files: { "journal/x.md": "# J\n\ntoken =\n" } });
+    const straddlingValue = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // 26 chars, joins with "token =" across the seam
+    const out = await makeBrainAppender(d)("journal/x.md", straddlingValue, undefined, "m");
+    expect(out).toMatch(/a credential assignment/);
+    expect(d.committed).toHaveLength(0);
+  });
+
+  it("still accepts an unrelated append when a secret-shaped string sits far (>200 chars) from the seam", async () => {
+    const farSecret = "ghp_" + "B".repeat(25);
+    const d = fakeDeps({ files: { "journal/x.md": `# J\n\n${farSecret}\n${"z".repeat(300)}\n` } });
+    const out = await makeBrainAppender(d)("journal/x.md", "unrelated new line", undefined, "m");
+    expect(out).toMatch(/committed/i);
+    expect(d.committed).toHaveLength(1);
+  });
 });

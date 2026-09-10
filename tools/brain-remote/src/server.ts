@@ -18,7 +18,7 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
     const surface = ctx.requestInfo?.headers.get(SURFACE_HEADER) ?? "";
     const defaultBootloader = surface !== SURFACE_CLAUDE_CODE;
     const server = new McpServer(
-      { name: "brain-remote", version: "1.5.0" },
+      { name: "brain-remote", version: "1.5.1" },
       {
         instructions:
           "This server is the user's brain (their private notes repo). Voice etiquette, " +
@@ -69,7 +69,8 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
             "Write ONE brain note (create or fully replace) the protocol-true way: the server " +
             "commits the note AND its INDEX.md line atomically to main. Server-enforced: markdown-only " +
             "paths in an allow/deny-listed directory set, required frontmatter (name/description/type), " +
-            "no secret-shaped content, a size cap, atomic INDEX line update. Yours to follow: one fact " +
+            "no secret-shaped content, a size cap, a TODO.md wipe guard (replacing it with under half its " +
+            "size refuses), atomic INDEX line update. Yours to follow: one fact " +
             "per file, kebab-case filename, update an existing note rather than duplicating it, and " +
             "brain_read it first before replacing. Refusals come back as text explaining what to fix.",
           inputSchema: z.object({
@@ -122,7 +123,7 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
             "`replace` may be empty to delete the span. If the edit changes a note's title or " +
             "description, its INDEX line is refreshed in the same commit. Server-enforced: the file " +
             "must exist (create notes with brain_write), same path rules as brain_write, no " +
-            "secret-shaped content, 100k result cap. For adding items use brain_append. Refusals " +
+            "secret-shaped content, 100k result cap, TODO.md wipe guard. For adding items use brain_append. Refusals " +
             "come back as text explaining what to fix.",
           inputSchema: z.object({
             path: z.string().describe("Repo-relative path of an EXISTING file, e.g. TODO.md or knowledge/some-gotcha.md"),
