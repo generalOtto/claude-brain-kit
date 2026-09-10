@@ -28,3 +28,6 @@ docs/superpowers/
 # local git worktrees (never shipped)
 .worktrees/
 .superpowers/
+
+# any stray node_modules (vitest run from the wrong cwd once leaked a cache file)
+node_modules/
