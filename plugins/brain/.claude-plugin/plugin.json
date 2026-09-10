@@ -1,6 +1,6 @@
 {
   "name": "brain",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Git-backed personal brain for Claude Code: session-start auto-pull, concurrency-safe writes, and the to-do / idea / profile mechanisms as skills.",
   "author": { "name": "claude-brain-kit" },
   "homepage": "https://github.com/generalOtto/claude-brain-kit",

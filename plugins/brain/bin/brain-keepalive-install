@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# brain-keepalive-install — install a weekly keepalive that pings `claude` so the
+# OAuth login token never lapses from inactivity (see docs/zero-friction.md).
+#
+# Usage:
+#   brain-keepalive-install              install (idempotent — safe to re-run)
+#   brain-keepalive-install --uninstall  remove everything it installed
+#
+# macOS              → LaunchAgent ~/Library/LaunchAgents/com.claude-brain.keepalive.plist
+# Linux (systemd)     → systemd --user service+timer claude-brain-keepalive.{service,timer}
+# Windows (Git Bash)  → prints a `schtasks` one-liner for you to run yourself, exits 0
+#
+# Runs weekly, Mondays 09:15 local time:
+#   claude -p 'Reply with the single word OK.' --output-format text
+# Logs every run to ~/.config/claude-brain/claude-keepalive.log.
+set -euo pipefail
+
+CONF_DIR="$HOME/.config/claude-brain"
+SCRIPT="$CONF_DIR/claude-keepalive.sh"
+LOG="$CONF_DIR/claude-keepalive.log"
+LABEL="com.claude-brain.keepalive"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+SYSTEMD_DIR="$HOME/.config/systemd/user"
+SERVICE="$SYSTEMD_DIR/claude-brain-keepalive.service"
+TIMER="$SYSTEMD_DIR/claude-brain-keepalive.timer"
+
+is_windows() { case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac; }
+is_macos()   { [ "$(uname -s)" = "Darwin" ]; }
+
+write_keepalive_script() {
+  mkdir -p "$CONF_DIR"
+  cat > "$SCRIPT" <<'EOS'
+#!/usr/bin/env bash
+# claude-keepalive.sh — installed by brain-keepalive-install. Pings claude so the
+# OAuth login token never lapses from inactivity; logs every run.
+set -uo pipefail
+LOG="$HOME/.config/claude-brain/claude-keepalive.log"
+mkdir -p "$(dirname "$LOG")"
+{
+  echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  if command -v claude >/dev/null 2>&1; then
+    out=$(claude -p 'Reply with the single word OK.' --output-format text 2>&1)
+    echo "$out"
+    case "$out" in
+      *OK*) : ;;
+      *) echo "keepalive: unexpected reply — login may have expired, run: claude login" ;;
+    esac
+  else
+    echo "keepalive: claude CLI not found on PATH"
+  fi
+} >> "$LOG" 2>&1
+EOS
+  chmod +x "$SCRIPT"
+}
+
+install_macos() {
+  write_keepalive_script
+  mkdir -p "$(dirname "$PLIST")"
+  cat > "$PLIST" <<PLIST_EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string>
+    <string>bash</string>
+    <string>$SCRIPT</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>1</integer>
+    <key>Hour</key><integer>9</integer>
+    <key>Minute</key><integer>15</integer>
+  </dict>
+  <key>StandardOutPath</key><string>$LOG</string>
+  <key>StandardErrorPath</key><string>$LOG</string>
+</dict>
+</plist>
+PLIST_EOF
+  local uid; uid=$(id -u)
+  launchctl bootout "gui/$uid" "$PLIST" >/dev/null 2>&1 || true
+  launchctl bootstrap "gui/$uid" "$PLIST"
+  echo "brain-keepalive-install: installed LaunchAgent $PLIST"
+}
+
+uninstall_macos() {
+  local uid; uid=$(id -u)
+  if [ -f "$PLIST" ]; then
+    launchctl bootout "gui/$uid" "$PLIST" >/dev/null 2>&1 || true
+    rm -f "$PLIST"
+  fi
+  rm -f "$SCRIPT"
+  echo "brain-keepalive-install: removed LaunchAgent"
+}
+
+install_linux() {
+  write_keepalive_script
+  mkdir -p "$SYSTEMD_DIR"
+  cat > "$SERVICE" <<EOS
+[Unit]
+Description=claude-brain keepalive — pings claude weekly so the OAuth login never lapses
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash $SCRIPT
+EOS
+  cat > "$TIMER" <<EOS
+[Unit]
+Description=Weekly timer for claude-brain keepalive
+
+[Timer]
+OnCalendar=Mon *-*-* 09:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOS
+  systemctl --user daemon-reload
+  systemctl --user enable --now claude-brain-keepalive.timer
+  echo "brain-keepalive-install: installed systemd --user timer claude-brain-keepalive.timer"
+}
+
+uninstall_linux() {
+  systemctl --user disable --now claude-brain-keepalive.timer >/dev/null 2>&1 || true
+  rm -f "$SERVICE" "$TIMER"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  rm -f "$SCRIPT"
+  echo "brain-keepalive-install: removed systemd --user timer"
+}
+
+print_windows() {
+  write_keepalive_script
+  echo "brain-keepalive-install: Windows detected — Git Bash can't register a scheduled"
+  echo "task for you. Run this yourself once, in an ordinary (non-admin) prompt:"
+  echo
+  echo "  schtasks /Create /SC WEEKLY /D MON /ST 09:15 /TN \"claude-brain-keepalive\" /TR \"bash -lc '$SCRIPT'\" /F"
+  echo
+  echo "Remove later with: schtasks /Delete /TN \"claude-brain-keepalive\" /F"
+}
+
+case "${1:-}" in
+  --uninstall)
+    if is_windows; then
+      echo "brain-keepalive-install: Windows — remove the task yourself: schtasks /Delete /TN \"claude-brain-keepalive\" /F"
+      rm -f "$SCRIPT"
+    elif is_macos; then uninstall_macos
+    else uninstall_linux
+    fi
+    ;;
+  "")
+    if is_windows; then print_windows
+    elif is_macos; then install_macos
+    else install_linux
+    fi
+    ;;
+  *) sed -n 's/^#   //p' "$0" >&2; exit 2 ;;
+esac

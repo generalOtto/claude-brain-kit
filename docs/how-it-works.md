@@ -147,6 +147,16 @@ enabled:
 Each is a couple of markdown files plus a skill — uninstall the plugin and delete the
 files and the mechanism is gone, nothing else to uninstall.
 
+## Zero-friction operations
+
+The same logic extends to *why Claude needs you at all*: `brain-secret` fetches
+credentials from Bitwarden Secrets Manager instead of asking you to paste them,
+`brain-keepalive-install` keeps the `claude` OAuth login from lapsing, and
+`conventions/standing-decisions.md` pre-answers the operational calls (merge, push,
+tag, deploy, scratch resources, brainstorm defaults) that don't need a fresh
+confirmation every time. One deliberate exception stays human-triggered: the daily
+digest. Full writeup: [zero-friction.md](zero-friction.md).
+
 ## The recall discipline
 
 The bootloader teaches Claude a strict order:

@@ -115,6 +115,7 @@ Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
 | [More surfaces](docs/more-surfaces.md) | Second machine; Claude Code web; cloud sessions |
 | [Maintenance](docs/maintenance.md) | The habits + a monthly consolidation prompt that keep the brain trustworthy |
 | [Security](docs/security.md) | Why private, the pointers-not-secrets policy, and the three enforcement layers |
+| [Zero-friction operations](docs/zero-friction.md) | Fetch secrets instead of asking for them, keep the `claude` login alive, and the other standing decisions that keep Claude from needing you for things it can just do |
 
 ## FAQ
 
