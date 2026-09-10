@@ -89,7 +89,9 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
           description:
             "Append a fragment to ONE existing brain file without rewriting it — the fit for " +
             "adding an item to a list or a line to a note. With section (e.g. \"Active\"), the " +
-            "fragment lands at the end of that \"## \" section; without it, at the end of the file. " +
+            "fragment lands at the end of that \"## \" section — the name may be the heading's " +
+            "leading words, so \"Known dead weight\" finds \"## Known dead weight (pending Otto)\"; " +
+            "without it, at the end of the file. " +
             "The headline case: adding a to-do = path TODO.md, section \"Active\", fragment shaped " +
             "like the file's existing items (brain_read it first if unsure). Server-enforced: the " +
             "file must already exist (create notes with brain_write), no secret-shaped content, no " +

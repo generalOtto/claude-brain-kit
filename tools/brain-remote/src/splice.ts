@@ -2,6 +2,46 @@ export type SpliceResult = { ok: true; content: string } | { ok: false; reason: 
 
 const isH2 = (line: string) => line.startsWith("## ");
 
+export type SectionMatch = { ok: true; index: number } | { ok: false; reason: string };
+
+// A caller's string matches a "## " heading when it equals the heading text
+// (case-insensitive, leading #s optional) or is a prefix of it followed by a
+// boundary: space, em/en dash, hyphen, colon, open paren, or end of text. So
+// "Known dead weight" finds "## Known dead weight (pending Otto)" but "v1.2"
+// does not find "## v1.2.1 …". Exact beats prefix; several prefix hits refuse.
+const BOUNDARY = /^[\s—–\-:(]/;
+
+export function findSection(lines: string[], section: string): SectionMatch {
+  const want = section.trim().replace(/^#+\s*/, "").toLowerCase();
+  const headings = lines
+    .map((l, index) => ({ index, text: l.slice(3).trim(), h2: isH2(l) }))
+    .filter((h) => h.h2);
+  const names = headings.map((h) => `"${h.text}"`);
+  const noMatch = (): SectionMatch => ({
+    ok: false,
+    reason: names.length
+      ? `No section matching "${section}" — this file's sections are: ${names.join(", ")}. Retry with one of those, or omit section to append at the end of the file.`
+      : `This file has no "## " sections — omit section to append at the end of the file.`,
+  });
+  if (!want) return noMatch();
+
+  const exact = headings.find((h) => h.text.toLowerCase() === want);
+  if (exact) return { ok: true, index: exact.index };
+
+  const prefix = headings.filter((h) => {
+    const t = h.text.toLowerCase();
+    return t.startsWith(want) && (t.length === want.length || BOUNDARY.test(t.slice(want.length)));
+  });
+  if (prefix.length === 1) return { ok: true, index: prefix[0].index };
+  if (prefix.length > 1) {
+    return {
+      ok: false,
+      reason: `"${section}" matches ${prefix.length} sections: ${prefix.map((h) => `"${h.text}"`).join(", ")}. Retry with the full heading text.`,
+    };
+  }
+  return noMatch();
+}
+
 // Appends `fragment` to `file`: at EOF, or (when `section` names a "## " heading,
 // case-insensitively, prefix optional) at the end of that section. Exactly one
 // blank line lands on each side of the fragment; the result keeps a trailing
@@ -14,17 +54,9 @@ export function spliceAppend(file: string, fragment: string, section?: string): 
   }
 
   const lines = file.split("\n");
-  const want = section.trim().replace(/^#+\s*/, "").toLowerCase();
-  const header = lines.findIndex((l) => isH2(l) && l.slice(3).trim().toLowerCase() === want);
-  if (header === -1) {
-    const names = lines.filter(isH2).map((l) => `"${l.slice(3).trim()}"`);
-    return {
-      ok: false,
-      reason: names.length
-        ? `No section matching "${section}" — this file's sections are: ${names.join(", ")}. Retry with one of those, or omit section to append at the end of the file.`
-        : `This file has no "## " sections — omit section to append at the end of the file.`,
-    };
-  }
+  const found = findSection(lines, section);
+  if (!found.ok) return { ok: false, reason: found.reason };
+  const header = found.index;
 
   let end = lines.length;
   for (let i = header + 1; i < lines.length; i++) {

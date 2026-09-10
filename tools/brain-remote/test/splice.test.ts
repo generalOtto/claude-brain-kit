@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { spliceAppend } from "../src/splice.js";
+import { spliceAppend, findSection } from "../src/splice.js";
 
 const FILE = `---
 name: todo
@@ -81,5 +81,78 @@ describe("spliceAppend", () => {
   it("adds the trailing newline when the source file lacks one", () => {
     expect(spliceAppend("## A\nitem\n## B", "frag", "A"))
       .toEqual({ ok: true, content: "## A\nitem\n\nfrag\n\n## B\n" });
+  });
+});
+
+const HEADINGS = `# Note
+
+## Known dead weight (pending Otto)
+- a
+
+## v1.2.1 — voice etiquette (2026-08-18)
+- b
+
+## v1.2 — brain_append
+- c
+
+## Active
+- d
+
+## Active items — later
+- e
+`.split("\n");
+
+describe("findSection", () => {
+  const idx = (s: string) => { const r = findSection(HEADINGS, s); if (!r.ok) throw new Error(r.reason); return HEADINGS[r.index]; };
+
+  it("exact match still works, case-insensitive, ## optional", () => {
+    expect(idx("active")).toBe("## Active");
+    expect(idx("## Active")).toBe("## Active");
+  });
+
+  it("matches a heading that continues with a parenthetical", () => {
+    expect(idx("Known dead weight")).toBe("## Known dead weight (pending Otto)");
+  });
+
+  it("matches a heading that continues with an em-dash", () => {
+    expect(idx("v1.2.1")).toBe("## v1.2.1 — voice etiquette (2026-08-18)");
+  });
+
+  it("does not treat a shorter version number as a prefix of a longer one", () => {
+    expect(idx("v1.2")).toBe("## v1.2 — brain_append");
+  });
+
+  it("exact match wins over prefix matches", () => {
+    expect(idx("Active")).toBe("## Active");
+  });
+
+  it("refuses when several headings share the prefix, listing them", () => {
+    const lines = ["## Notes — 2026", "## Notes — 2025", "body"];
+    const r = findSection(lines, "Notes");
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toContain("2 sections");
+      expect(r.reason).toContain('"Notes — 2026"');
+      expect(r.reason).toContain('"Notes — 2025"');
+    }
+  });
+
+  it("does not match mid-word prefixes", () => {
+    const r = findSection(["## Activewear", "x"], "Active");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain('No section matching "Active"');
+  });
+
+  it("empty section string is a no-match, not a match-everything", () => {
+    const r = findSection(HEADINGS, "   ");
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe("spliceAppend with prefix sections", () => {
+  it("appends into a prefix-matched section", () => {
+    const r = spliceAppend(HEADINGS.join("\n"), "- new", "Known dead weight");
+    if (!r.ok) throw new Error(r.reason);
+    expect(r.content).toContain("- a\n\n- new\n\n## v1.2.1");
   });
 });
