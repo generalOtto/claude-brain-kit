@@ -27,3 +27,4 @@ docs/superpowers/
 
 # local git worktrees (never shipped)
 .worktrees/
+.superpowers/
