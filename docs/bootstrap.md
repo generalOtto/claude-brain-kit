@@ -28,13 +28,29 @@ device using one of the two tiers below.
 
 - **Satellite** (default): secondary/casual machines — a gaming box, a family
   computer, a short-lived VM. No git, no keys, no clone; the GitHub MCP connector
-  does everything (plus the optional Voice Brain connector, preferred for writes —
+  does everything (plus the optional brain-remote connector, preferred for writes —
   `docs/voice.md`).
 - **Full**: primary work machines. Local clone + the brain plugin. Choose when local
   search over the notes, offline access, or git-based workflows matter here.
   (Satellite upgrades to Full at any time — just do Full's steps later.)
 
 When unsure, ask: "satellite or full?"
+
+### Which registration reaches the brain — the rule
+
+One optional remote server (`tools/brain-remote/`, if the human deployed it), two
+client-side ways to register it, plus the clone. Every surface is exactly one row:
+
+| Surface | What gives it the brain | brain-remote plugin? |
+|---|---|---|
+| Any machine with a clone (every Full device) — terminal, desktop app, headless alike | the clone: `~/.claude/CLAUDE.md` import, the `brain` plugin's session-start pull, notes read from disk, writes via `brain-write.sh` | **No.** If the remote server is also visible here (mirrored connector), call `brain_index` with `bootloader: false` — the bootloader is already loaded. |
+| claude.ai web, mobile, voice — and Claude Code signed in with the same claude.ai account (the connector is mirrored into those sessions; check `claude mcp list`) | the **brain-remote custom connector**, added once on claude.ai | **No** — the connector is the registration. |
+| Claude Code with **no clone and no mirrored connector**: API-key / Bedrock / Vertex auth, an org that disabled custom connectors, or a machine you refuse to put a deploy key on | the **`brain-remote` plugin**: `claude plugin marketplace add generalOtto/claude-brain-kit && claude plugin install brain-remote@claude-brain-kit`, paste the server URL when prompted | **Yes — this is the only case.** The plugin also sends `x-brain-surface: claude-code`, which makes `brain_index` skip the bootloader. |
+
+Why one registration cannot do both jobs: the connector is a claude.ai account
+object (claude.ai cannot load Claude Code plugins, so a plugin never reaches voice or
+mobile) and the plugin is a Claude Code object (API-key sessions never see claude.ai
+connectors). The server is shared; the two registries are Anthropic's.
 
 ### Satellite mode (~1 minute, zero installs)
 
@@ -106,6 +122,7 @@ When unsure, ask: "satellite or full?"
 ### After bootstrap
 
 Every future session on this device loads the brain automatically (stub or clone).
+Do not install the `brain-remote` plugin on a Full device — see the rule table above.
 Keep honoring the write protocol — on full-tier devices every write publishes through
 `brain-write.sh` (own worktree → immediate push to `main`), so the remote — and
 every connector surface — has each memory the moment it's made; other clones catch up

@@ -71,11 +71,17 @@ voice mode, text chats, and the mobile apps can now all use the five tools.
 Re-running the script is safe: existing secrets and the subdomain are kept.
 
 **Claude Code:** MCP servers added on claude.ai are available in Claude Code
-automatically when it is signed in with the same claude.ai account (not with
-API-key/Bedrock/Vertex auth) — check `claude mcp list`. If it is not there:
-`claude plugin install brain-remote@claude-brain-kit` and paste the URL when prompted
-(kept out of settings.json — in the macOS Keychain, or `~/.claude/.credentials.json`
-elsewhere).
+automatically when it is signed in with the same claude.ai account — check
+`claude mcp list`. On a machine that also has the clone, the bootloader is already in
+context: tell Claude (your CLAUDE.md can say it) to call `brain_index` with
+`bootloader: false`. Install the `brain-remote` plugin **only** when no connector reaches
+the session — API-key/Bedrock/Vertex auth, an org that disabled custom connectors, or a
+clone-less machine you won't put a deploy key on:
+`claude plugin install brain-remote@claude-brain-kit`, paste the URL when prompted (kept
+out of settings.json — in the macOS Keychain, or `~/.claude/.credentials.json`
+elsewhere). The plugin sends `x-brain-surface: claude-code`, so `brain_index` skips the
+bootloader there without any prompt wording. The full decision table is in
+[bootstrap.md](bootstrap.md#which-registration-reaches-the-brain--the-rule).
 
 ## Security posture
 

@@ -77,6 +77,7 @@ Every surface is just a different transport to the same repo:
 | Claude Code (satellite device) | GitHub MCP connector + [bootloader stub](bootstrap.md) | full | full (commits via connector) |
 | claude.ai web + mobile | GitHub MCP connector | full | full (commits via connector) |
 | Claude Code web | repo added to session | full | via `claude/` branches |
+| Claude Code, no clone, no claude.ai connector (API-key/Bedrock/Vertex auth) | `brain-remote` plugin → your remote server ([rule table](bootstrap.md#which-registration-reaches-the-brain--the-rule)) | full | full (guarded atomic commits) |
 | Any browser, worst case | github.com itself | full | GitHub's editor |
 
 Nothing here is a server you run — one plugin, one repo. If any surface breaks, the
