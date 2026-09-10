@@ -1,5 +1,8 @@
 # brain plugin — changelog
 
+## 1.1.1 — 2026-09-10
+brain-secret parsed bws columns and could print value fragments in `list`; now JSON-only.
+
 ## 1.1.0 — 2026-09-10
 Zero-friction operations: reduce how often Claude needs to come back to you for
 things it can just do. `brain-secret` (wraps Bitwarden Secrets Manager's `bws` CLI —
