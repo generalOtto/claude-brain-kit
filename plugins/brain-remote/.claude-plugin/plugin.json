@@ -1,6 +1,6 @@
 {
   "name": "brain-remote",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "description": "Remote brain access for Claude Code sessions without a local clone: registers your self-hosted brain MCP server (deployed from tools/brain-remote). Only needed when `claude mcp list` does not already show it.",
   "author": { "name": "claude-brain-kit" },
   "homepage": "https://github.com/generalOtto/claude-brain-kit",

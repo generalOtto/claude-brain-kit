@@ -2,7 +2,10 @@
   "mcpServers": {
     "brain-remote": {
       "type": "http",
-      "url": "${user_config.brain_remote_url}"
+      "url": "${user_config.brain_remote_url}",
+      "headers": {
+        "x-brain-surface": "claude-code"
+      }
     }
   }
 }

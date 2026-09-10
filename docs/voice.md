@@ -29,11 +29,16 @@ Cloudflare Workers in one command: `tools/brain-remote/` (born for voice mode, h
 
 ## What you get
 
-Four tools on every surface the connector is added to: `brain_index` (bootloader +
-catalog), `brain_read` (one note), `brain_write` (create/replace, atomic with the
-index), `brain_append` (add to an existing note or a `##` section of it). There is
-deliberately **no delete** — voice plus irreversible is a bad mix; deletions stay
-in text sessions.
+Five tools on every surface the connector is added to: `brain_index` (catalog, plus the
+bootloader unless the caller already has it — Claude Code callers send
+`x-brain-surface: claude-code` through the plugin and get the catalog only; pass
+`bootloader: true` to force it), `brain_read` (one note), `brain_write` (create/replace,
+atomic with the index), `brain_append` (add to an existing note or a `##` section of it —
+the section name may be the heading's leading words), `brain_edit` (replace one exact,
+unique piece of text in an existing file; the cheap way to flip a date or fix a line).
+Catalog descriptions are capped at 120 characters server-side; a brain that keeps
+`journal/INDEX.md` gets its journal lines indexed there. There is deliberately **no
+delete** — voice plus irreversible is a bad mix; deletions stay in text sessions.
 
 ## Setup (~5 minutes, $0)
 
