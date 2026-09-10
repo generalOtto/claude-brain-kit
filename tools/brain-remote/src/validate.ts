@@ -40,14 +40,14 @@ export function validatePath(path: string): ValidateResult {
   return { ok: true, clean };
 }
 
-export function findSecret(content: string): string | null {
+function findSecret(content: string): string | null {
   for (const [re, what] of SECRET_PATTERNS) {
     if (re.test(content)) return what;
   }
   return null;
 }
 
-export const SECRET_REFUSAL = (what: string) =>
+const SECRET_REFUSAL = (what: string) =>
   `Content looks like it contains ${what} — the brain stores no secret values; store a pointer instead (see pointers/secrets.md).`;
 
 export function validateWrite(path: string, content: string): ValidateResult {

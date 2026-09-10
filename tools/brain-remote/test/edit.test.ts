@@ -36,4 +36,19 @@ describe("spliceEdit", () => {
     const r = spliceEdit("cost (2026).\n", "(2026).", "(2027).");
     expect(r).toEqual({ ok: true, content: "cost (2027).\n" });
   });
+
+  it("counts overlapping occurrences", () => {
+    const r = spliceEdit("aaa", "aa", "z");
+    expect(r).toEqual({ ok: false, reason: "Found 2 times — include more surrounding text so it matches exactly once." });
+  });
+
+  it("refuses a repetitive span that overlaps itself", () => {
+    const r = spliceEdit("09-09-09\n", "09-09", "X");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/^Found 2 times/);
+  });
+
+  it("find equal to the whole file replaces everything", () => {
+    expect(spliceEdit("whole\n", "whole\n", "new\n")).toEqual({ ok: true, content: "new\n" });
+  });
 });
