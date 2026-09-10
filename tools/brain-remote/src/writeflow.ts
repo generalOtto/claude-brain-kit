@@ -1,7 +1,8 @@
-import { updateIndex, indexFileFor } from "./brainindex.js";
+import { updateIndex, indexFileFor, isIndexed, indexLineFor } from "./brainindex.js";
 import type { IndexUpdate } from "./brainindex.js";
-import { validateWrite, validateAppend, MAX_CHARS } from "./validate.js";
+import { validateWrite, validateAppend, validateEdit, MAX_CHARS } from "./validate.js";
 import { spliceAppend } from "./splice.js";
+import { spliceEdit } from "./edit.js";
 import { TRUNCATION_NOTICE, BrainFileNotFound } from "./gh.js";
 import type { BrainFetcher } from "./gh.js";
 import type { GitData } from "./gitdata.js";
@@ -136,6 +137,56 @@ export function makeBrainAppender(deps: { gitdata: GitData; fetchFile: BrainFetc
         message,
         success: (sha) =>
           `Committed ${sha}: appended to ${v.clean}${section !== undefined ? ` (section "${section}")` : ""}.`,
+      };
+    });
+  };
+}
+
+export function makeBrainEditor(deps: { gitdata: GitData; fetchFile: BrainFetcher }) {
+  const { gitdata, fetchFile } = deps;
+
+  return async (path: string, find: string, replace: string, message: string): Promise<string> => {
+    const v = validateEdit(path, find, replace);
+    if (!v.ok) return v.reason;
+
+    return withCasRetry(gitdata, async (head) => {
+      let current: string;
+      try {
+        current = await fetchFile(v.clean, head.commitSha);
+      } catch (err) {
+        if (err instanceof BrainFileNotFound) {
+          return { refuse: `No such file in the brain: ${v.clean} — brain_edit only edits existing files; create it with brain_write.` };
+        }
+        throw err;
+      }
+      if (current.endsWith(TRUNCATION_NOTICE)) {
+        return { refuse: `${v.clean} is too large to edit safely from here — do it from a text session.` };
+      }
+      const e = spliceEdit(current, find, replace);
+      if (!e.ok) return { refuse: e.reason };
+      if (e.content.length > MAX_CHARS) {
+        return { refuse: `The edit would grow ${v.clean} to ${e.content.length} chars; the cap is ${MAX_CHARS}.` };
+      }
+      if (v.clean === "TODO.md" && e.content.length * 2 < current.length) {
+        return {
+          refuse:
+            `That would shrink TODO.md from ${current.length} to ${e.content.length} chars — ` +
+            `a real restructure belongs in a text session.`,
+        };
+      }
+
+      const files = [{ path: v.clean, content: e.content }];
+      let suffix = "";
+      if (isIndexed(v.clean) && indexLineFor(v.clean, current) !== indexLineFor(v.clean, e.content)) {
+        const r = await refreshIndex(fetchFile, head.commitSha, v.clean, e.content);
+        if ("refuse" in r) return r;
+        files.push(...r.extra);
+        suffix = indexSuffix(r.idx);
+      }
+      return {
+        files,
+        message,
+        success: (s) => `Replaced 1 occurrence in ${v.clean} — ${s}${suffix}.`,
       };
     });
   };
