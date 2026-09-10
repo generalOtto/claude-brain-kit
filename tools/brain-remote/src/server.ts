@@ -36,7 +36,8 @@ export function makeHandler(fetchFile: BrainFetcher, writeNote?: WriteNote, appe
           "Call this FIRST, before reading anything else. Returns INDEX.md, the catalog of every " +
           "brain note with one-line descriptions, plus — unless this surface already has it — the " +
           "brain bootloader (CLAUDE.md: who the user is, how recall works). If the brain bootloader " +
-          "is not already in your context, pass bootloader: true. Use the catalog to pick which " +
+          "is not already in your context, pass bootloader: true; if it already is (e.g. Claude Code " +
+          "with CLAUDE.md loaded), pass bootloader: false. Use the catalog to pick which " +
           "notes to read. Voice sessions: never speak while a tool call is running — finish your " +
           "sentence, call, then continue.",
         inputSchema: z.object({
