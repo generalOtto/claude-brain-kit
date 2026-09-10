@@ -50,4 +50,18 @@ describe("compactCatalog", () => {
     expect(out.split("\n")).toHaveLength(3);
     expect(out.endsWith("\n")).toBe(true);
   });
+
+  it("hard-cuts at 120 chars when description is one unbroken token", () => {
+    const token = "x".repeat(200); // no spaces
+    const out = compactCatalog(entry(token));
+    const desc = out.slice("- [Some note](knowledge/some-note.md) — ".length);
+    expect(desc).toBe("x".repeat(120) + "…");
+  });
+
+  it("cuts at early space when it's the only space in the window", () => {
+    const token = "short " + "x".repeat(150);
+    const out = compactCatalog(entry(token));
+    const desc = out.slice("- [Some note](knowledge/some-note.md) — ".length);
+    expect(desc).toBe("short…");
+  });
 });
