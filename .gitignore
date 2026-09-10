@@ -24,3 +24,6 @@ Thumbs.db
 
 # local dev plans (never shipped)
 docs/superpowers/
+
+# local git worktrees (never shipped)
+.worktrees/
