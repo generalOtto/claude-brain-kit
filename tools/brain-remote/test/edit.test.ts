@@ -6,12 +6,18 @@ const FILE = "- **next:** 2026-09-14 · **last:** 2026-09-07\n- other line\n";
 describe("spliceEdit", () => {
   it("replaces the single occurrence and leaves everything else byte-identical", () => {
     const r = spliceEdit(FILE, "**next:** 2026-09-14", "**next:** 2026-09-21");
-    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-21 · **last:** 2026-09-07\n- other line\n" });
+    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-21 · **last:** 2026-09-07\n- other line\n", at: 2, length: 20 });
   });
 
   it("empty replace deletes the matched span", () => {
     const r = spliceEdit(FILE, "- other line\n", "");
-    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-14 · **last:** 2026-09-07\n" });
+    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-14 · **last:** 2026-09-07\n", at: 46, length: 0 });
+  });
+
+  it("at points at the start of the original match; length matches the replacement", () => {
+    const r = spliceEdit(FILE, "**next:** 2026-09-14", "**next:** 2026-09-21");
+    if (!r.ok) throw new Error(r.reason);
+    expect(r.content.slice(r.at, r.at + r.length)).toBe("**next:** 2026-09-21");
   });
 
   it("refuses when the text is not found, telling the caller to copy it verbatim", () => {
@@ -34,7 +40,7 @@ describe("spliceEdit", () => {
 
   it("is a plain substring match, not a regex", () => {
     const r = spliceEdit("cost (2026).\n", "(2026).", "(2027).");
-    expect(r).toEqual({ ok: true, content: "cost (2027).\n" });
+    expect(r).toEqual({ ok: true, content: "cost (2027).\n", at: 5, length: 7 });
   });
 
   it("counts overlapping occurrences", () => {
@@ -49,6 +55,6 @@ describe("spliceEdit", () => {
   });
 
   it("find equal to the whole file replaces everything", () => {
-    expect(spliceEdit("whole\n", "whole\n", "new\n")).toEqual({ ok: true, content: "new\n" });
+    expect(spliceEdit("whole\n", "whole\n", "new\n")).toEqual({ ok: true, content: "new\n", at: 0, length: 4 });
   });
 });

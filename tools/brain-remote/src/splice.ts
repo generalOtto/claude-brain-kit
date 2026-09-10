@@ -1,4 +1,6 @@
-export type SpliceResult = { ok: true; content: string } | { ok: false; reason: string };
+export type SpliceResult =
+  | { ok: true; content: string; at: number; length: number }
+  | { ok: false; reason: string };
 
 const isH2 = (line: string) => line.startsWith("## ");
 
@@ -50,7 +52,8 @@ export function spliceAppend(file: string, fragment: string, section?: string): 
   const frag = fragment.replace(/^\s*\n/, "").replace(/\s+$/, "");
 
   if (section === undefined) {
-    return { ok: true, content: `${file.replace(/\s+$/, "")}\n\n${frag}\n` };
+    const before = file.replace(/\s+$/, "");
+    return { ok: true, content: `${before}\n\n${frag}\n`, at: before.length + 2, length: frag.length };
   }
 
   const lines = file.split("\n");
@@ -67,9 +70,10 @@ export function spliceAppend(file: string, fragment: string, section?: string): 
 
   const before = lines.slice(0, insertAt).join("\n");
   const after = lines.slice(end);
+  const at = before.length + 2;
   if (after.length) {
     const content = `${before}\n\n${frag}\n\n${after.join("\n")}`;
-    return { ok: true, content: content.endsWith("\n") ? content : `${content}\n` };
+    return { ok: true, content: content.endsWith("\n") ? content : `${content}\n`, at, length: frag.length };
   }
-  return { ok: true, content: `${before}\n\n${frag}\n` };
+  return { ok: true, content: `${before}\n\n${frag}\n`, at, length: frag.length };
 }

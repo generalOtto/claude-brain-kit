@@ -20,13 +20,25 @@ name: todo
 describe("spliceAppend", () => {
   it("appends at EOF with exactly one blank line seam", () => {
     expect(spliceAppend("# Note\n\nbody\n", "new line"))
-      .toEqual({ ok: true, content: "# Note\n\nbody\n\nnew line\n" });
+      .toEqual({ ok: true, content: "# Note\n\nbody\n\nnew line\n", at: 14, length: 8 });
   });
 
   it("inserts at the end of a named section, before the next ## heading", () => {
     const r = spliceAppend(FILE, "### New item\n- x", "Active");
     if (!r.ok) throw new Error(r.reason);
     expect(r.content).toContain("- body\n\n### New item\n- x\n\n## Muted");
+  });
+
+  it("at/length point exactly at the inserted fragment for an EOF append", () => {
+    const r = spliceAppend("# Note\n\nbody\n", "new line");
+    if (!r.ok) throw new Error(r.reason);
+    expect(r.content.slice(r.at, r.at + r.length)).toBe("new line");
+  });
+
+  it("at/length point exactly at the inserted fragment for a section append", () => {
+    const r = spliceAppend(FILE, "### New item\n- x", "Active");
+    if (!r.ok) throw new Error(r.reason);
+    expect(r.content.slice(r.at, r.at + r.length)).toBe("### New item\n- x");
   });
 
   it("matches sections case-insensitively, ## prefix optional", () => {
@@ -43,12 +55,12 @@ describe("spliceAppend", () => {
 
   it("appends into a section that ends the file", () => {
     expect(spliceAppend("# T\n\n## Last\n\nitem\n", "frag", "Last"))
-      .toEqual({ ok: true, content: "# T\n\n## Last\n\nitem\n\nfrag\n" });
+      .toEqual({ ok: true, content: "# T\n\n## Last\n\nitem\n\nfrag\n", at: 20, length: 4 });
   });
 
   it("appends into an empty section", () => {
     expect(spliceAppend("## A\n## B\n", "frag", "A"))
-      .toEqual({ ok: true, content: "## A\n\nfrag\n\n## B\n" });
+      .toEqual({ ok: true, content: "## A\n\nfrag\n\n## B\n", at: 6, length: 4 });
   });
 
   it("missing section refuses and lists the real headings", () => {
@@ -69,7 +81,7 @@ describe("spliceAppend", () => {
 
   it("normalizes messy fragment edges to single blank lines", () => {
     expect(spliceAppend("a\n", "\n\nfrag\n\n\n"))
-      .toEqual({ ok: true, content: "a\n\nfrag\n" });
+      .toEqual({ ok: true, content: "a\n\nfrag\n", at: 3, length: 4 });
   });
 
   it("collapses a multi-blank-line section tail to one seam line", () => {
@@ -80,7 +92,7 @@ describe("spliceAppend", () => {
 
   it("adds the trailing newline when the source file lacks one", () => {
     expect(spliceAppend("## A\nitem\n## B", "frag", "A"))
-      .toEqual({ ok: true, content: "## A\nitem\n\nfrag\n\n## B\n" });
+      .toEqual({ ok: true, content: "## A\nitem\n\nfrag\n\n## B\n", at: 11, length: 4 });
   });
 });
 
@@ -135,6 +147,13 @@ describe("findSection", () => {
       expect(r.reason).toContain('"Notes — 2026"');
       expect(r.reason).toContain('"Notes — 2025"');
     }
+  });
+
+  it("matches a heading that continues with an en-dash (U+2013)", () => {
+    const lines = ["## Notes – 2026", "x"];
+    const r = findSection(lines, "Notes");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(lines[r.index]).toBe("## Notes – 2026");
   });
 
   it("does not match mid-word prefixes", () => {

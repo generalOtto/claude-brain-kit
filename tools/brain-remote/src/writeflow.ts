@@ -1,5 +1,5 @@
 import { updateIndex, indexFileFor, isIndexed, indexLineFor } from "./brainindex.js";
-import { validateWrite, validateAppend, validateEdit, MAX_CHARS } from "./validate.js";
+import { validateWrite, validateAppend, validateEdit, secretInWindow, MAX_CHARS } from "./validate.js";
 import { spliceAppend } from "./splice.js";
 import { spliceEdit } from "./edit.js";
 import { TRUNCATION_NOTICE, BrainFileNotFound } from "./gh.js";
@@ -150,6 +150,8 @@ export function makeBrainAppender(deps: { gitdata: GitData; fetchFile: BrainFetc
       }
       const s = spliceAppend(current, content, section);
       if (!s.ok) return { refuse: s.reason };
+      const leak = secretInWindow(s.content, s.at, s.length);
+      if (leak) return { refuse: leak };
       if (s.content.length > MAX_CHARS) {
         return { refuse: `Appending would grow ${v.clean} to ${s.content.length} chars; the cap is ${MAX_CHARS}.` };
       }
@@ -185,6 +187,8 @@ export function makeBrainEditor(deps: { gitdata: GitData; fetchFile: BrainFetche
       }
       const e = spliceEdit(current, find, replace);
       if (!e.ok) return { refuse: e.reason };
+      const leak = secretInWindow(e.content, e.at, e.length);
+      if (leak) return { refuse: leak };
       if (e.content.length > MAX_CHARS) {
         return { refuse: `The edit would grow ${v.clean} to ${e.content.length} chars; the cap is ${MAX_CHARS}.` };
       }

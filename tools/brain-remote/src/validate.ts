@@ -51,6 +51,17 @@ function findSecret(content: string): string | null {
 const SECRET_REFUSAL = (what: string) =>
   `Content looks like it contains ${what} — the brain stores no secret values; store a pointer instead (see pointers/secrets.md).`;
 
+// Scans an 80-char margin on each side of a splice's inserted span for a secret
+// that only becomes recognizable once joined with the surrounding file — e.g. a
+// token whose prefix already sat in the file and whose suffix just landed next
+// to it. Bounded so legitimate example-shaped strings elsewhere in the file
+// (outside the seam) don't block an unrelated append/edit.
+export function secretInWindow(content: string, at: number, length: number): string | null {
+  const window = content.slice(Math.max(0, at - 80), at + length + 80);
+  const secret = findSecret(window);
+  return secret ? SECRET_REFUSAL(secret) : null;
+}
+
 export function validateWrite(path: string, content: string): ValidateResult {
   const p = validatePath(path);
   if (!p.ok) return p;

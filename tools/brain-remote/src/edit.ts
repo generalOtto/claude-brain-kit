@@ -1,4 +1,6 @@
-export type EditResult = { ok: true; content: string } | { ok: false; reason: string };
+export type EditResult =
+  | { ok: true; content: string; at: number; length: number }
+  | { ok: false; reason: string };
 
 // Exact, whitespace-sensitive, plain-substring find/replace that only proceeds
 // when `find` occurs exactly once. Pure string surgery — path/secret gates run
@@ -23,5 +25,10 @@ export function spliceEdit(file: string, find: string, replace: string): EditRes
   if (count > 1) {
     return { ok: false, reason: `Found ${count} times — include more surrounding text so it matches exactly once.` };
   }
-  return { ok: true, content: file.slice(0, firstIndex) + replace + file.slice(firstIndex + find.length) };
+  return {
+    ok: true,
+    content: file.slice(0, firstIndex) + replace + file.slice(firstIndex + find.length),
+    at: firstIndex,
+    length: replace.length,
+  };
 }

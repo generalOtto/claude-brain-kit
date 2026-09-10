@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateWrite, validateAppend, validateEdit } from "../src/validate.js";
+import { validateWrite, validateAppend, validateEdit, secretInWindow } from "../src/validate.js";
 
 const FM = "---\nname: x\ndescription: y\ntype: reference\n---\n\n# X\nbody\n";
 
@@ -141,6 +141,12 @@ describe("validateAppend", () => {
     expect(validateAppend("journal/2026-08-18-x.md", "## Later\ntext", undefined).ok).toBe(true);
   });
 
+  it("refuses journal/INDEX.md — it is a catalog the server maintains", () => {
+    const r = validateAppend("journal/INDEX.md", "x");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/catalog the server maintains/i);
+  });
+
   it("refuses indented and tab-separated h2 headings when a section is given", () => {
     expect(validateAppend("TODO.md", "  ## Sneaky\ntext", "Active").ok).toBe(false);
     expect(validateAppend("TODO.md", "##\tSneaky\ntext", "Active").ok).toBe(false);
@@ -174,5 +180,35 @@ describe("validateEdit", () => {
     const r = validateEdit("knowledge/x.md", "a", "token = ghp_" + "A".repeat(30));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toContain("GitHub token");
+  });
+
+  it("refuses journal/INDEX.md — it is a catalog the server maintains", () => {
+    const r = validateEdit("journal/INDEX.md", "a", "b");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/catalog the server maintains/i);
+  });
+});
+
+describe("secretInWindow", () => {
+  const SECRET = "ghp_" + "B".repeat(25); // 29 chars, matches the GitHub-token pattern
+
+  it("does not report a secret entirely outside the 80-char margin", () => {
+    const content = SECRET + "z".repeat(300); // secret spans [0, 29)
+    // window = slice(max(0, 310-80), 310+0+80) = slice(230, 390) — starts well past the secret
+    expect(secretInWindow(content, 310, 0)).toBeNull();
+  });
+
+  it("reports a secret that overlaps the 80-char margin", () => {
+    const content = "z".repeat(50) + SECRET + "z".repeat(300); // secret spans [50, 79)
+    // window = slice(max(0, 100-80), 100+0+80) = slice(20, 180) — fully contains the secret
+    const leak = secretInWindow(content, 100, 0);
+    expect(leak).not.toBeNull();
+    expect(leak).toMatch(/GitHub token/);
+  });
+
+  it("covers the inserted span itself, not just its margins", () => {
+    const content = "z".repeat(50) + SECRET + "z".repeat(50);
+    const leak = secretInWindow(content, 50, SECRET.length);
+    expect(leak).not.toBeNull();
   });
 });
