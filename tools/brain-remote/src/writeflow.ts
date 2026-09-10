@@ -1,4 +1,5 @@
-import { updateIndex } from "./brainindex.js";
+import { updateIndex, indexFileFor } from "./brainindex.js";
+import type { IndexUpdate } from "./brainindex.js";
 import { validateWrite, validateAppend, MAX_CHARS } from "./validate.js";
 import { spliceAppend } from "./splice.js";
 import { TRUNCATION_NOTICE, BrainFileNotFound } from "./gh.js";
@@ -11,6 +12,40 @@ type Head = { commitSha: string; treeSha: string };
 type BuildOutcome =
   | { files: { path: string; content: string }[]; message: string; success: (shortSha: string) => string }
   | { refuse: string };
+
+type IndexState = IndexUpdate | { kind: "index-missing"; file: string };
+type IndexOutcome = { refuse: string } | { idx: IndexState; extra: { path: string; content: string }[] };
+
+// One place decides which index file a note belongs to, fetches it at the
+// commit's head, and produces the extra file for the commit. Shared by
+// brain_write and brain_edit so the two cannot drift.
+async function refreshIndex(
+  fetchFile: BrainFetcher,
+  commitSha: string,
+  notePath: string,
+  noteContent: string,
+): Promise<IndexOutcome> {
+  const indexPath = indexFileFor(notePath);
+  let current: string;
+  try {
+    current = await fetchFile(indexPath, commitSha);
+  } catch (err) {
+    if (err instanceof BrainFileNotFound) return { idx: { kind: "index-missing", file: indexPath }, extra: [] };
+    throw err;
+  }
+  if (current.endsWith(TRUNCATION_NOTICE)) {
+    return { refuse: `${indexPath} too large to update safely from here — write it from a text session.` };
+  }
+  const idx = updateIndex(current, notePath, noteContent);
+  return { idx, extra: idx.kind === "updated" ? [{ path: indexPath, content: idx.content }] : [] };
+}
+
+function indexSuffix(idx: IndexState): string {
+  if (idx.kind === "updated") return " (+ INDEX line updated)";
+  if (idx.kind === "section-missing") return ` — INDEX has no "${idx.section}" section, so its line was not added; add it from a text session`;
+  if (idx.kind === "index-missing") return ` — ${idx.file} does not exist, so its line was not added; create it from a text session`;
+  return "";
+}
 
 // Shared CAS loop: fetch head, let the flow build its commit against exactly that
 // head, commit, non-force ref update; a lost race rebuilds on the winner's head.
@@ -60,24 +95,12 @@ export function makeBrainWriter(deps: { gitdata: GitData; fetchFile: BrainFetche
         }
       }
 
-      const currentIndex = await fetchFile("INDEX.md", head.commitSha);
-      if (currentIndex.endsWith(TRUNCATION_NOTICE)) {
-        return { refuse: "INDEX too large to update safely from here — write it from a text session." };
-      }
-      const files = [{ path: v.clean, content }];
-      const idx = updateIndex(currentIndex, v.clean, content);
-      if (idx.kind === "updated") files.push({ path: "INDEX.md", content: idx.content });
-
+      const r = await refreshIndex(fetchFile, head.commitSha, v.clean, content);
+      if ("refuse" in r) return r;
       return {
-        files,
+        files: [{ path: v.clean, content }, ...r.extra],
         message,
-        success: (s) => {
-          if (idx.kind === "updated") return `Committed ${s}: ${v.clean} (+ INDEX line updated).`;
-          if (idx.kind === "section-missing") {
-            return `Committed ${s}: ${v.clean} — INDEX has no "${idx.section}" section, so its line was not added; add it from a text session.`;
-          }
-          return `Committed ${s}: ${v.clean}.`;
-        },
+        success: (s) => `Committed ${s}: ${v.clean}${indexSuffix(r.idx)}.`,
       };
     });
   };

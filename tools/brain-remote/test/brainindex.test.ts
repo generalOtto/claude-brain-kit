@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updateIndex } from "../src/brainindex.js";
+import { updateIndex, indexFileFor, isIndexed, indexLineFor } from "../src/brainindex.js";
 
 const INDEX = `# INDEX — the brain's catalog
 
@@ -62,5 +62,26 @@ describe("updateIndex", () => {
     const out = updated(updateIndex(INDEX, "knowledge/q.md", note("q", "quoted desc", "Q")));
     expect(out).toContain("— quoted desc");
     expect(out).not.toContain('"quoted desc"');
+  });
+});
+
+describe("indexFileFor / isIndexed / indexLineFor", () => {
+  it("routes journal notes to the sub-index and everything else to the root", () => {
+    expect(indexFileFor("journal/2026-09-10-x.md")).toBe("journal/INDEX.md");
+    expect(indexFileFor("knowledge/x.md")).toBe("INDEX.md");
+    expect(indexFileFor("TODO.md")).toBe("INDEX.md");
+  });
+
+  it("isIndexed follows the section map", () => {
+    expect(isIndexed("knowledge/x.md")).toBe(true);
+    expect(isIndexed("journal/x.md")).toBe(true);
+    expect(isIndexed("ideas/apps/x.md")).toBe(false);
+    expect(isIndexed("TODO.md")).toBe(false);
+  });
+
+  it("indexLineFor prefers the H1, then frontmatter name, then the path", () => {
+    expect(indexLineFor("knowledge/a.md", note("a", "desc", "Title A"))).toBe("- [Title A](knowledge/a.md) — desc");
+    expect(indexLineFor("knowledge/a.md", "---\nname: a\ndescription: d\ntype: reference\n---\nbody\n")).toBe("- [a](knowledge/a.md) — d");
+    expect(indexLineFor("knowledge/a.md", "body only\n")).toBe("- [knowledge/a.md](knowledge/a.md) — ");
   });
 });

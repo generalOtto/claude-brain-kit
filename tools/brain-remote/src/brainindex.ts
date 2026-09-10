@@ -19,6 +19,23 @@ function frontmatterField(content: string, field: string): string | null {
   return m[1].trim().replace(/^["']|["']$/g, "");
 }
 
+export function isIndexed(notePath: string): boolean {
+  return Object.keys(SECTION_PREFIX).some((f) => notePath.startsWith(f));
+}
+
+// journal/ keeps its own chronological sub-index (the INDEX diet, 2026-09-10);
+// every other mapped folder lives in the root catalog.
+export function indexFileFor(notePath: string): string {
+  return notePath.startsWith("journal/") ? "journal/INDEX.md" : "INDEX.md";
+}
+
+export function indexLineFor(notePath: string, noteContent: string): string {
+  const h1 = noteContent.match(/^# (.+)$/m)?.[1].trim();
+  const title = h1 ?? frontmatterField(noteContent, "name") ?? notePath;
+  const desc = frontmatterField(noteContent, "description") ?? "";
+  return `- [${title}](${notePath}) — ${desc}`;
+}
+
 export type IndexUpdate =
   | { kind: "updated"; content: string }
   | { kind: "unmapped" }
@@ -32,10 +49,7 @@ export function updateIndex(
   const folder = Object.keys(SECTION_PREFIX).find((f) => notePath.startsWith(f));
   if (!folder) return { kind: "unmapped" }; // ideas/, TODO.md, anything unmapped: no INDEX line by design
 
-  const h1 = noteContent.match(/^# (.+)$/m)?.[1].trim();
-  const title = h1 ?? frontmatterField(noteContent, "name") ?? notePath;
-  const desc = frontmatterField(noteContent, "description") ?? "";
-  const newLine = `- [${title}](${notePath}) — ${desc}`;
+  const newLine = indexLineFor(notePath, noteContent);
 
   const lines = indexContent.split("\n");
   const existing = lines.findIndex((l) => l.includes(`](${notePath})`));

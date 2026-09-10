@@ -6,7 +6,9 @@ import type { GitData } from "../src/gitdata.js";
 const FM = "---\nname: n\ndescription: d\ntype: reference\n---\n\n# N\nbody\n";
 const INDEX = "# INDEX\n\n## knowledge/ — facts\n- [Old](knowledge/old.md) — o\n";
 
-function fakeDeps(opts: { races?: number; todo?: string } = {}) {
+const JOURNAL_INDEX = "# journal INDEX\n\n## journal/ — what we did together\n- [2026-01-01 — old](journal/2026-01-01-old.md) — o\n";
+
+function fakeDeps(opts: { races?: number; todo?: string; journalIndex?: string | null } = {}) {
   let races = opts.races ?? 0;
   const committed: any[] = [];
   let headN = 0;
@@ -17,6 +19,10 @@ function fakeDeps(opts: { races?: number; todo?: string } = {}) {
   };
   const fetchFile = async (path: string, ref?: string) => {
     if (path === "INDEX.md") return INDEX;
+    if (path === "journal/INDEX.md") {
+      if (opts.journalIndex === null) throw new BrainFileNotFound("No such file in the brain: journal/INDEX.md");
+      return opts.journalIndex ?? JOURNAL_INDEX;
+    }
     if (path === "TODO.md" && opts.todo !== undefined) return opts.todo;
     throw new Error(`unexpected read: ${path}@${ref}`);
   };
@@ -117,5 +123,24 @@ describe("makeBrainWriter", () => {
     };
     const out = await makeBrainWriter(d)("TODO.md", "# TODO\n", "seed");
     expect(out).toMatch(/committed/i);
+  });
+
+  it("journal notes update journal/INDEX.md, not the root INDEX", async () => {
+    const d = fakeDeps();
+    const fm = "---\nname: j\ndescription: a day\ntype: reference\n---\n\n# 2026-09-10 — a day\nbody\n";
+    const out = await makeBrainWriter(d)("journal/2026-09-10-a-day.md", fm, "journal");
+    expect(out).toContain("INDEX line updated");
+    expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["journal/2026-09-10-a-day.md", "journal/INDEX.md"]);
+    expect(d.committed[0].files[1].content).toContain("- [2026-09-10 — a day](journal/2026-09-10-a-day.md) — a day");
+    expect(d.committed[0].files[1].content.indexOf("2026-01-01-old")).toBeLessThan(d.committed[0].files[1].content.indexOf("2026-09-10-a-day"));
+  });
+
+  it("a missing journal/INDEX.md still commits the note and says the line was not added", async () => {
+    const d = fakeDeps({ journalIndex: null });
+    const fm = "---\nname: j\ndescription: a day\ntype: reference\n---\n\n# Day\nbody\n";
+    const out = await makeBrainWriter(d)("journal/2026-09-10-a-day.md", fm, "journal");
+    expect(out).toMatch(/committed/i);
+    expect(out).toContain("journal/INDEX.md does not exist");
+    expect(d.committed[0].files.map((f: any) => f.path)).toEqual(["journal/2026-09-10-a-day.md"]);
   });
 });
