@@ -1,0 +1,39 @@
+import { describe, expect, it } from "vitest";
+import { spliceEdit } from "../src/edit.js";
+
+const FILE = "- **next:** 2026-09-14 · **last:** 2026-09-07\n- other line\n";
+
+describe("spliceEdit", () => {
+  it("replaces the single occurrence and leaves everything else byte-identical", () => {
+    const r = spliceEdit(FILE, "**next:** 2026-09-14", "**next:** 2026-09-21");
+    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-21 · **last:** 2026-09-07\n- other line\n" });
+  });
+
+  it("empty replace deletes the matched span", () => {
+    const r = spliceEdit(FILE, "- other line\n", "");
+    expect(r).toEqual({ ok: true, content: "- **next:** 2026-09-14 · **last:** 2026-09-07\n" });
+  });
+
+  it("refuses when the text is not found, telling the caller to copy it verbatim", () => {
+    const r = spliceEdit(FILE, "next: 2026-09-14", "x");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/^Not found — /);
+    if (!r.ok) expect(r.reason).toContain("brain_read");
+  });
+
+  it("refuses when the text occurs more than once, stating the count", () => {
+    const r = spliceEdit("a b a b a\n", "a", "z");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe("Found 3 times — include more surrounding text so it matches exactly once.");
+  });
+
+  it("matching is whitespace-exact", () => {
+    const r = spliceEdit("line one\n", "line  one", "x");
+    expect(r.ok).toBe(false);
+  });
+
+  it("is a plain substring match, not a regex", () => {
+    const r = spliceEdit("cost (2026).\n", "(2026).", "(2027).");
+    expect(r).toEqual({ ok: true, content: "cost (2027).\n" });
+  });
+});

@@ -40,14 +40,14 @@ export function validatePath(path: string): ValidateResult {
   return { ok: true, clean };
 }
 
-function findSecret(content: string): string | null {
+export function findSecret(content: string): string | null {
   for (const [re, what] of SECRET_PATTERNS) {
     if (re.test(content)) return what;
   }
   return null;
 }
 
-const SECRET_REFUSAL = (what: string) =>
+export const SECRET_REFUSAL = (what: string) =>
   `Content looks like it contains ${what} — the brain stores no secret values; store a pointer instead (see pointers/secrets.md).`;
 
 export function validateWrite(path: string, content: string): ValidateResult {
@@ -82,6 +82,19 @@ export function validateAppend(path: string, fragment: string, section?: string)
   }
 
   const secret = findSecret(fragment);
+  if (secret) return no(SECRET_REFUSAL(secret));
+
+  return { ok: true, clean: p.clean };
+}
+
+export function validateEdit(path: string, find: string, replace: string): ValidateResult {
+  const p = validatePath(path);
+  if (!p.ok) return p;
+  const no = (reason: string): ValidateResult => ({ ok: false, reason });
+
+  if (find === "") return no("Nothing to find — `find` is empty; brain_read the file and copy the exact text to replace.");
+
+  const secret = findSecret(replace);
   if (secret) return no(SECRET_REFUSAL(secret));
 
   return { ok: true, clean: p.clean };

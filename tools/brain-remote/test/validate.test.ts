@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateWrite, validateAppend } from "../src/validate.js";
+import { validateWrite, validateAppend, validateEdit } from "../src/validate.js";
 
 const FM = "---\nname: x\ndescription: y\ntype: reference\n---\n\n# X\nbody\n";
 
@@ -136,5 +136,30 @@ describe("validateAppend", () => {
   it("still allows indented h3 and 4-space-indented (code block) h2", () => {
     expect(validateAppend("TODO.md", "   ### Item\n- x", "Active").ok).toBe(true);
     expect(validateAppend("TODO.md", "    ## code sample\n", "Active").ok).toBe(true);
+  });
+});
+
+describe("validateEdit", () => {
+  it("accepts an allowed path with a non-empty find", () => {
+    expect(validateEdit("TODO.md", "old", "new")).toEqual({ ok: true, clean: "TODO.md" });
+    expect(validateEdit("/knowledge/x.md", "old", "")).toEqual({ ok: true, clean: "knowledge/x.md" });
+  });
+
+  it("refuses an empty find", () => {
+    const r = validateEdit("TODO.md", "", "new");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain("empty");
+  });
+
+  it("applies the path gate — INDEX.md and CLAUDE.md are not editable", () => {
+    expect(validateEdit("INDEX.md", "a", "b").ok).toBe(false);
+    expect(validateEdit("CLAUDE.md", "a", "b").ok).toBe(false);
+    expect(validateEdit("tools/x.md", "a", "b").ok).toBe(false);
+  });
+
+  it("scans the replacement for secrets", () => {
+    const r = validateEdit("knowledge/x.md", "a", "token = ghp_" + "A".repeat(30));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toContain("GitHub token");
   });
 });
