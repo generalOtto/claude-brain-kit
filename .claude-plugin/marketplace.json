@@ -13,7 +13,7 @@
     {
       "name": "brain-remote",
       "source": "./plugins/brain-remote",
-      "description": "Remote brain access for Claude Code sessions without a local clone — registers your self-hosted brain MCP server (tools/brain-remote). Needed only where no claude.ai connector reaches the session; if `claude mcp list` already shows a brain server, skip it.",
+      "description": "Remote brain access for Claude Code sessions without a local clone — registers your self-hosted brain MCP server (tools/brain-remote). Needed only where no claude.ai connector reaches the session; if the session already has brain_* tools from a mirrored claude.ai connector, skip it.",
       "version": "1.5.0",
       "category": "productivity"
     }
