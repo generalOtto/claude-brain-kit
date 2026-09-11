@@ -149,5 +149,25 @@ days=$(sed -n 's/.*"cleanupPeriodDays"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*
 days=${days:-30}
 [ "$days" -lt 3650 ] && suffix="$suffix | transcripts expire in ${days}d: run /brain:setup"
 
+# ---- profile consolidation nudge --------------------------------------------
+# Trigger: first session of any day on which identity/profile.md's Evidence log
+# holds entries newer than its frontmatter `last-consolidated` date (absent →
+# 0000-00-00, i.e. any entry counts). Silent once a pass has stamped today's date,
+# so an entry the pass just wrote today never re-triggers the same day.
+PROFILE="$BRAIN/identity/profile.md"
+if [ -f "$PROFILE" ]; then
+  last_consolidated=$(awk '/^---$/{c++; next} c==1' "$PROFILE" | sed -n 's/^last-consolidated:[[:space:]]*"\{0,1\}\([0-9][0-9-]*\)"\{0,1\}[[:space:]]*$/\1/p' | head -1)
+  last_consolidated=${last_consolidated:-0000-00-00}
+  today=$(date +%Y-%m-%d)
+  if [ "$today" \> "$last_consolidated" ]; then
+    n=0
+    while IFS= read -r d; do
+      [ -n "$d" ] || continue
+      [ "$d" \> "$last_consolidated" ] && n=$((n + 1))
+    done < <(awk '/^## Evidence log/{f=1;next} /^## /{f=0} f' "$PROFILE" | sed -n 's/^- \([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\).*/\1/p')
+    [ "$n" -gt 0 ] && suffix="$suffix · profile: ${n} unconsolidated evidence entries — run the consolidation pass (see conventions/profile-evaluation.md)"
+  fi
+fi
+
 echo "brain: ${status}${suffix}"
 exit 0

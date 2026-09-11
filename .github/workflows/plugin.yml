@@ -20,7 +20,7 @@ jobs:
           test -x plugins/brain/bin/brain-secret
           test -x plugins/brain/bin/brain-keepalive-install
           command -v shellcheck >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q shellcheck; }
-          shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/hooks/journal-guard plugins/brain/bin/brain-write.sh plugins/brain/bin/brain-secret plugins/brain/bin/brain-keepalive-install tests/lib.sh tests/session-start.test.sh tests/journal-guard.test.sh tests/brain-write.test.sh tests/brain-secret.test.sh tests/brain-keepalive-install.test.sh tests/run.sh
+          shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/hooks/journal-guard plugins/brain/bin/brain-write.sh plugins/brain/bin/brain-secret plugins/brain/bin/brain-keepalive-install tests/lib.sh tests/session-start.test.sh tests/profile-trigger.test.sh tests/journal-guard.test.sh tests/brain-write.test.sh tests/brain-secret.test.sh tests/brain-keepalive-install.test.sh tests/run.sh
       - name: Bash tests
         run: bash tests/run.sh
       - uses: actions/setup-node@v4

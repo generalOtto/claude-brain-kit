@@ -1,6 +1,6 @@
 ---
 name: profile-evaluation
-description: "The profile evaluation mechanism — event-driven capture of hard evidence about {{YOUR_NAME}} into profile.md's evidence log with a mandatory one-line 'profiled →' announce; facts only in-session, deductions only in the ~10-entry consolidation pass; includes the evidence rules"
+description: "The profile evaluation mechanism — event-driven capture of hard evidence about {{YOUR_NAME}} into profile.md's evidence log with a mandatory one-line 'profiled →' announce; facts only in-session, deductions only in the daily consolidation pass (first session of a day with unconsolidated entries); includes the evidence rules"
 type: feedback
 ---
 
@@ -47,10 +47,16 @@ records. When in doubt, skip; the portrait's value is curation.
 
 ## The consolidation trigger (condition-based, no scheduler)
 
-Every append **counts the log**. At **~10 entries**, offer the consolidation pass in
-the same breath as the announce ("log is ripe — run the consolidation pass?"). Track it
-as a `TODO.md` item so it isn't lost; it runs like any **go** — with {{YOUR_NAME}} in
-the conversation, since deductions are curation.
+The pass runs at the **start of the first session of any day** on which the evidence
+log holds entries newer than `last-consolidated` in `identity/profile.md`'s
+frontmatter (absent = every entry counts). The brain plugin's session-start hook does
+the counting and reports it in its status line (`profile: N unconsolidated evidence
+entries — run the consolidation pass`) — no offer-and-wait needed, since the hook
+already surfaces it every session until it's done. When the session sees that line, it
+runs the pass with {{YOUR_NAME}} in the conversation (deductions are curation), then
+stamps `last-consolidated: <today>` in the frontmatter so the same entries don't
+re-trigger later that day. Quiet days — nothing new since the last pass — are silent:
+no line, no prompt.
 
 **The pass:** distill log entries into the portrait sections of `identity/profile.md` ·
 make or update *deduced characteristics* (only here, each claim citing its evidence) ·

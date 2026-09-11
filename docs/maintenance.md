@@ -27,8 +27,9 @@ good days. The journal is where the *relationship* accumulates, not just the fac
 
 **Let the list and the log breathe.** `TODO.md` stays trustworthy when done items
 actually move to the done log and stale `next:` dates get re-aimed — say "todos" and
-tidy in ten seconds. The profile's evidence log is designed to be consolidated (~10
-entries): when Claude offers the pass, take it — that's the moment raw evidence
+tidy in ten seconds. The profile's evidence log is designed to be consolidated daily:
+the session-start hook reports it the first session of any day with unconsolidated
+entries — when you see that line, take the pass — that's the moment raw evidence
 becomes a portrait you'd actually endorse.
 
 ## Periodic consolidation (monthly-ish, or when it feels cluttered)

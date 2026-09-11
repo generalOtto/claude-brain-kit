@@ -25,7 +25,7 @@ category, not per idea).
 - [Example convention](conventions/example-convention.md) — EXAMPLE: shows the shape of a standing preference (the rule, why, how to apply)
 - [The to-do list mechanism](conventions/todo-list.md) — TODO.md item format, once-a-day digest surfacing, go/later/mute/done/add responses, hard-deadline bridge
 - [Idea capture](conventions/idea-capture.md) — zero-friction filing: an idea dropped on any surface → ideas/<category>/<slug>.md + a one-line confirm; new categories propose-first
-- [Profile evaluation](conventions/profile-evaluation.md) — the living-profile mechanism: evidence rules, capture loop with "profiled →" announce, ~10-entry consolidation pass
+- [Profile evaluation](conventions/profile-evaluation.md) — the living-profile mechanism: evidence rules, capture loop with "profiled →" announce, daily consolidation pass (first session of a day with unconsolidated entries)
 - [Standing decisions](conventions/standing-decisions.md) — pre-decided operational calls (merge, push, tag, deploy, scratch resources, brainstorm defaults, secrets, devices) so Claude doesn't ask
 - [Access & secrets — least friction, no surface gating](conventions/access-and-secrets.md) — Every surface gets the same access; add connectors once on claude.ai; official OAuth connectors before raw keys, keys before asking
 

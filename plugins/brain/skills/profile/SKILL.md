@@ -9,5 +9,7 @@ user-invocable: false
 Clone: run `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` to get the path. Follow `conventions/profile-evaluation.md` there (the
 evidence rules, incl. the knowledge-provenance exclusion). Append one dated line to the
 `## Evidence log` in `identity/profile.md` through the `brain:write` skill and reply with
-one line: `profiled → <what was noted>`. Deductions happen only in the consolidation
-pass (offer it when the log reaches ~10 entries) — never in-session.
+one line: `profiled → <what was noted>`. Deductions happen only in the daily
+consolidation pass — never in-session; the session-start hook reports it (`profile: N
+unconsolidated evidence entries`) at the start of the first session of any day the
+evidence log holds entries newer than `last-consolidated`.

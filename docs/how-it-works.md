@@ -108,6 +108,10 @@ fast-forwards the clone and injects exactly one status line into Claude's contex
   parked; sync once you're online
 - `… not wired: run /brain:setup` — the bootloader isn't imported on this machine
 - `… transcripts expire in Nd: run /brain:setup` — retention is still at the default
+- `… profile: N unconsolidated evidence entries — run the consolidation pass (see
+  conventions/profile-evaluation.md)` — `identity/profile.md`'s evidence log has
+  entries newer than its `last-consolidated` frontmatter date and today's the first
+  session to see them; silent once a pass stamps today's date
 
 Design constraints, in case you're auditing it: it **always exits 0** (a brain problem
 must never break session start), it **can't hang** (no terminal prompts, bounded ssh
@@ -149,8 +153,10 @@ enabled:
 - **The living profile** (`identity/profile.md` + `conventions/profile-evaluation.md`)
   — when a session produces hard evidence about who you are or how you work, Claude
   appends a dated one-liner to an evidence log and tells you (`profiled → …` — your
-  veto point). Every ~10 entries it offers a consolidation pass that distills the log
-  into a portrait. Strict evidence rules keep it honest: only your words, decisions,
+  veto point). The session-start hook reports whenever the log holds entries newer
+  than the profile's `last-consolidated` date; the first session of a day that sees
+  that line runs a consolidation pass distilling the log into a portrait and stamps
+  today's date, so quiet days stay silent. Strict evidence rules keep it honest: only your words, decisions,
   and credentials count — never how projects are implemented (that's mostly Claude's
   authorship), and never knowledge Claude itself explained to you.
 

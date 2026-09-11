@@ -1,5 +1,16 @@
 # brain plugin — changelog
 
+## 1.3.0 — 2026-09-11
+The profile consolidation trigger is now daily instead of count-based: the pass runs
+at the start of the first session of any day on which `identity/profile.md`'s
+evidence log holds entries newer than its `last-consolidated` frontmatter date
+(~10 entries was too slow in practice). The session-start hook now reports it in its
+status line — `profile: N unconsolidated evidence entries — run the consolidation
+pass (see conventions/profile-evaluation.md)` — silent when there's nothing to
+consolidate, no `identity/profile.md`, or a pass already ran today. The consolidation
+pass stamps `last-consolidated: <today>` when it runs. See `docs/how-it-works.md`,
+"Session start: the clone freshens itself", and `conventions/profile-evaluation.md`.
+
 ## 1.2.0 — 2026-09-11
 New **Stop hook** `journal-guard`: a session can no longer quietly end a day that
 had brain commits without a same-day `journal/<today>-*.md` entry. It blocks the
