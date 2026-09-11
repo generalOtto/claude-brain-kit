@@ -19,7 +19,7 @@ backdate_init() {
 commit_today() {
   echo "$RANDOM" >> "$SB/brain/note-$RANDOM-$$.md"
   git -C "$SB/brain" add -A
-  git -C "$SB/brain" commit --quiet -m "${1:-today}"
+  git -C "$SB/brain" commit --quiet -m today
 }
 
 # no commits today → allow (silent, exit 0)
