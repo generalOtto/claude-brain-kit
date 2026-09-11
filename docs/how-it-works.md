@@ -119,6 +119,16 @@ into context — recall stays index-first. The hook matcher is `startup|clear`, 
 `--resolve` (which clone path it will use) and `--check-wired` (is the bootloader
 imported) — that's what `/brain:setup` and the skills call.
 
+## Journal guard: a session can't quietly end a day of writes
+
+A second, small hook rides the **Stop** event: `journal-guard`. When a session is
+about to end, it counts today's commits in the brain (`git log --since=<midnight>`)
+and, if there's at least one and no `journal/<today>-*.md` exists yet, blocks the
+stop with a reason telling Claude to write one through the write protocol before
+finishing. It never blocks twice in a row (`stop_hook_active` short-circuits it),
+never touches the network, and always exits 0 — a brain problem still can't break a
+session's stop. Set `BRAIN_JOURNAL_GUARD=off` to disable it.
+
 ## Mechanisms that ride on conversations (still no scheduler)
 
 Claude can't run on a schedule without an always-on machine — and this system runs no

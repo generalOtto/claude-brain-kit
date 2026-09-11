@@ -1,5 +1,13 @@
 # brain plugin — changelog
 
+## 1.2.0 — 2026-09-11
+New **Stop hook** `journal-guard`: a session can no longer quietly end a day that
+had brain commits without a same-day `journal/<today>-*.md` entry. It blocks the
+stop once with a reason telling Claude to write the entry through the write
+protocol, never blocks twice in a row, and always exits 0 (a brain problem must
+never break a session's stop). Opt out per-session with `BRAIN_JOURNAL_GUARD=off`.
+See `docs/how-it-works.md`, "Journal guard".
+
 ## 1.1.1 — 2026-09-10
 brain-secret parsed bws columns and could print value fragments in `list`; now JSON-only.
 

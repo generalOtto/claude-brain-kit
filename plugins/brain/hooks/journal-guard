@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# journal-guard — Claude Code Stop hook for the brain plugin.
+# Refuses to let a session end a day that had brain commits without a same-day
+# journal/ entry. Launched via hooks/run-hook.cmd, wired on the "Stop" event.
+#
+# Contract (https://code.claude.com/docs/en/hooks — Stop hook):
+#   - stdin carries a JSON object including "stop_hook_active": true when Claude
+#     is already continuing because of a previous Stop-hook block.
+#   - To block the stop: print {"decision":"block","reason":"<text>"} and exit 0.
+#   - To allow the stop: print nothing and exit 0.
+#
+# Invariants:
+#   - ALWAYS exits 0 — a brain problem must never break a session's stop.
+#   - Never blocks twice in a row (stop_hook_active short-circuits first).
+#   - Never hangs — every git call is local, no network.
+#   - Silent on every allow path — only the block path prints anything.
+#
+# Opt-out: set BRAIN_JOURNAL_GUARD=off to disable the check entirely.
+#
+# Brain clone resolution (copied verbatim from hooks/session-start and
+# bin/brain-write.sh — keep identical):
+#   $BRAIN_DIR → $CLAUDE_PLUGIN_OPTION_BRAIN_DIR → pluginConfigs["brain@claude-brain-kit"] brain_dir in
+#   ~/.claude/settings.json → ~/claude-brain (if a git repo) → none.
+set -uo pipefail
+
+normpath() {                       # ~ expansion, Windows → POSIX, no trailing slash
+  local p="$1"
+  # shellcheck disable=SC2088  # matching a literal leading tilde is the point
+  case "$p" in "~") p="$HOME" ;; "~/"*) p="$HOME/${p#\~/}" ;; esac
+  if command -v cygpath >/dev/null 2>&1; then
+    p=$(cygpath -u "$p" 2>/dev/null || printf '%s' "$p")
+  else
+    p=${p//\\//}
+  fi
+  p=${p%/}
+  printf '%s' "$p"
+}
+resolve_brain() {
+  local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
+  if [ -z "$d" ] && [ -f "$s" ]; then
+    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1 || true)
+    d=${d//\\\\/\\}                # JSON-escaped backslashes
+  fi
+  if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then
+    d="$HOME/claude-brain"
+  fi
+  [ -n "$d" ] || return 1
+  normpath "$d"
+}
+
+# ---- 1. stop_hook_active: never block twice in a row --------------------------
+input=$(cat 2>/dev/null || true)
+if printf '%s' "$input" | grep -Eq '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
+  exit 0
+fi
+
+# ---- opt-out --------------------------------------------------------------------
+[ "${BRAIN_JOURNAL_GUARD:-}" = "off" ] && exit 0
+
+# ---- 2. resolve the brain dir --------------------------------------------------
+BRAIN=$(resolve_brain) || exit 0
+git -C "$BRAIN" rev-parse --git-dir >/dev/null 2>&1 || exit 0
+
+# ---- 3. commits since local midnight --------------------------------------------
+today=$(date +%Y-%m-%d)
+count=$(git -C "$BRAIN" log --since="$today 00:00" --no-merges --oneline 2>/dev/null | wc -l | tr -d '[:space:]')
+[ "${count:-0}" -gt 0 ] || exit 0
+
+# ---- 4. today's journal entry already exists? ------------------------------------
+if compgen -G "$BRAIN/journal/$today-*.md" >/dev/null 2>&1; then
+  exit 0
+fi
+
+# ---- 5. block, with a reason under 300 chars -------------------------------------
+reason="Brain: ${count} commit(s) today but no journal/${today}-*.md yet. Write today's journal entry (dated, one note: what happened, decisions, what changed) through the write protocol, then stop."
+esc=${reason//\\/\\\\}
+esc=${esc//\"/\\\"}
+printf '{"decision":"block","reason":"%s"}\n' "$esc"
+exit 0
