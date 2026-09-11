@@ -1,5 +1,18 @@
 # Zero-friction operations
 
+## The access ladder (and no surface gating)
+
+Add integrations **once, as claude.ai connectors** — they mirror into web, mobile, voice and every
+Claude Code session signed in with the account. Do not register the same server per device, and do
+not gate a surface on purpose. For credentials, take the highest rung that exists:
+
+1. Official MCP/connector with OAuth (permanent, scoped at consent, nothing to store).
+2. A CLI's own OAuth login (`gh`, `wrangler`, `claude`), kept alive by the weekly keepalive.
+3. A key in your secret store, fetched blind with `brain-secret` — only when no OAuth path exists.
+4. Asking the human — only for the one-time act of granting 1–3.
+
+The starter note `conventions/access-and-secrets.md` carries this as a standing rule.
+
 ## The principle
 
 Every time Claude has to come back to you for something it could have handled
