@@ -16,6 +16,9 @@ secret_setup() {
 # TSV/table, since values here contain tabs/newlines. Plain bash on purpose: the
 # parser-probe tests run it with a failing python3 on PATH.
 set -euo pipefail
+# When a test sets $BWS_TOKEN_SINK, record the token we were handed — via printenv,
+# so the value is never on a command line this fake could itself xtrace.
+if [ -n "${BWS_TOKEN_SINK:-}" ]; then printenv BWS_ACCESS_TOKEN > "$BWS_TOKEN_SINK"; fi
 shift 2  # --color no
 shift 2  # -o json
 cmd=$1; shift
@@ -74,6 +77,10 @@ for s in secrets:
   export BWS_FIXTURE="$SB/fixtures/list.json" BWS_FIXTURE_DIR="$SB/fixtures"
   echo tok > "$SB/conf/bws-token"; chmod 600 "$SB/conf/bws-token"
   export BRAIN_SECRETS_TOKEN_FILE="$SB/conf/bws-token"
+  # The host's own bws setup stays out of the sandbox: a token exported there must
+  # never be the one the fake bws records (and a failed assertion prints), and a
+  # BASH_ENV file must not run — and be traced — inside the script under test.
+  unset BWS_ACCESS_TOKEN BASH_ENV
   export PATH="$SB/bin:$PATH"
 }
 
@@ -237,5 +244,35 @@ if command -v jq >/dev/null 2>&1; then
   assert_eq "$(PATH="$SB/stub:$PATH" S get "$ID5" | xxd -p | tr -d '\n')" "$want" "jq fallback: multiline value is byte-exact"
   t_teardown
 fi
+
+# 14. xtrace must never trace the access token. bws_ hands the token to bws as a
+# command-scoped env assignment, which `bash -x` — or an xtrace inherited through an
+# exported SHELLOPTS — would print as "+ BWS_ACCESS_TOKEN=<token>". A long canary
+# stands in for the token so the assertion can't match by accident. Each route also
+# proves it was live: the trace of the script's own `set +x` shows xtrace was on at
+# startup, the sink shows bws still got the token, and the command still answers.
+secret_setup
+CANARY=xtrace-canary-token-that-must-never-be-printed
+echo "$CANARY" > "$SB/conf/bws-token"
+export BWS_TOKEN_SINK="$SB/token-seen"
+for route in "bash -x" "env SHELLOPTS=xtrace bash"; do   # word-split on purpose below
+  : > "$BWS_TOKEN_SINK"
+  out=$($route "$SECRET" list 2>&1)
+  assert_contains "$out" "set +x" "$route: xtrace was on when the script started"
+  assert_contains "$out" "$ID1	FOO_KEY" "$route: list still works"
+  assert_eq "$(cat "$BWS_TOKEN_SINK")" "$CANARY" "$route: bws still receives the token"
+  assert_lacks "$out" "$CANARY" "$route: list never traces the token"
+  out=$($route "$SECRET" get FOO_KEY 2>&1)
+  assert_contains "$out" "foo-value" "$route: get by key still works"
+  assert_lacks "$out" "$CANARY" "$route: get by key never traces the token"
+  out=$($route "$SECRET" get "$ID2" 2>&1)
+  assert_contains "$out" "bar-value" "$route: get by id still works"
+  assert_lacks "$out" "$CANARY" "$route: get by id never traces the token"
+  # a value only ever leaves on stdout — stderr alone must not carry it
+  err=$({ $route "$SECRET" get FOO_KEY >/dev/null; } 2>&1)
+  assert_lacks "$err" "foo-value" "$route: stderr never carries the value"
+done
+unset BWS_TOKEN_SINK
+t_teardown
 
 t_report

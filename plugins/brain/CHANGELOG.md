@@ -1,5 +1,24 @@
 # brain plugin — changelog
 
+## 1.3.2 — 2026-10-03
+`brain-secret` printed its Bitwarden access token when run under xtrace — `bash -x
+brain-secret …`, or an xtrace inherited through an exported `SHELLOPTS` — because bash
+traces the command-scoped assignment that hands the token to `bws`
+(`+ BWS_ACCESS_TOKEN=…` on stderr). Every version since 1.1.0 did this. The script now
+turns tracing off (`set +x`) as its first command, before anything reads the token
+file; the test suite pins it on both routes with a canary token.
+- **Were you exposed?** Only if `brain-secret` ever ran traced and that output went
+  somewhere: terminal scrollback, a log, a Claude transcript. From 1.1.1 on, secret
+  values were never part of the trace (they travel through pipes, not command lines);
+  1.1.0 traced every value as well. Either way the token reads every secret its
+  machine account can reach — revoke it and issue a new one, and if anyone else could
+  have seen the trace, rotate those secrets too.
+- **What the script cannot fix:** a caller that itself runs under `set -x` traces
+  whatever it captures with `$(brain-secret get NAME)` and every command it then hands
+  the value to. Keep xtrace off around the capture and every use of the value.
+
+Also corrects the 1.3.1 notes below: where to re-run the keepalive installer.
+
 ## 1.3.1 — 2026-10-03
 Windows (Git for Windows) fixes.
 - `brain-keepalive-install` printed a `schtasks` command that ran a bare `bash`; from
@@ -8,11 +27,12 @@ Windows (Git for Windows) fixes.
   Git Bash by full path, and the printed command points `/TR` at that wrapper
   (quoted for `schtasks` when the path has a space). `--uninstall` removes the
   wrapper too. **If you registered the task with an earlier version:** re-run
-  `brain-keepalive-install` and run the `schtasks` command it prints again — `/F`
-  replaces the old task.
+  `/brain:setup` (or ask Claude to run `brain-keepalive-install` — it is on PATH only
+  inside Claude Code, not in your own terminal) and run the `schtasks` command it
+  prints again — `/F` replaces the old task.
 - The keepalive script runs `claude -p … < /dev/null`: with no stdin under a scheduler
-  the CLI waited 3s and logged a warning on every run. Re-run
-  `brain-keepalive-install` to pick this up (all platforms).
+  the CLI waited 3s and logged a warning on every run. Re-run `/brain:setup` (or ask
+  Claude to run `brain-keepalive-install`) to pick this up (all platforms).
 - `brain-secret` chose `python3` because it was on PATH; on Windows that can be the
   Microsoft Store alias, which only prints "Python was not found". It now runs each
   candidate (`python3`, `python`, `py -3`) and takes the first Python 3.6+ that

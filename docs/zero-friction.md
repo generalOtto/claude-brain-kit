@@ -34,6 +34,9 @@ Six root causes cover essentially every "needs the human" ask:
 - `brain-secret get <id-or-exact-key>` — prints the value alone, for
   `$(brain-secret get NAME)` inside a script. Claude never echoes the value it gets
   back — capture or pipe it, never paste it into chat or a committed file.
+- It never traces itself (`bash -x` would otherwise print the access token), but a
+  caller running under `set -x` traces what it captures and every command it then
+  hands the value to — keep xtrace off there too.
 - Token file: `${BRAIN_SECRETS_TOKEN_FILE:-~/.config/claude-brain/bws-token}`, mode
   600 — a Bitwarden Secrets Manager machine-account access token, nothing else.
 - No `bws`? `brew install bws` (or see the [bws docs](https://bitwarden.com/help/secrets-manager-cli/)).
