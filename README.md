@@ -138,7 +138,9 @@ free tier.
 **Windows?** Install the plugin from Git Bash. Git for Windows is the only
 prerequisite: the session-start hook runs through the same polyglot `run-hook.cmd`
 launcher the superpowers plugin uses, and `brain-write.sh` is an ordinary bash
-script the Bash tool runs from PATH. No symlinks, no Developer Mode, no python.
+script the Bash tool runs from PATH. No symlinks, no Developer Mode, no python — the
+one exception is the optional `brain-secret` helper, which needs a working Python
+3.6+ or `jq` ([docs/zero-friction.md](docs/zero-friction.md)).
 
 **Does my brain repo run these GitHub Actions?** Three: a gitleaks scan on every
 push as a secrets backstop (delete `.github/workflows/gitleaks.yml` if you don't

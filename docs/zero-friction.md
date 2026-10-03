@@ -39,6 +39,10 @@ Six root causes cover essentially every "needs the human" ask:
 - No `bws`? `brew install bws` (or see the [bws docs](https://bitwarden.com/help/secrets-manager-cli/)).
   No token file? Create a Bitwarden Secrets Manager machine account, put its access
   token at the path above.
+- It parses `bws`'s JSON with the first Python 3.6+ that actually runs (`python3`,
+  `python`, `py -3`), else `jq` — the one helper in the plugin that needs either. On
+  Windows a `python3` on PATH can be the Microsoft Store alias, which only prints
+  "Python was not found"; `brain-secret` skips it and says so plainly if nothing works.
 
 Per the brain's secrets policy ([pointers/secrets.md](../pointers/secrets.md)), the
 brain itself still stores no secret values — `brain-secret` is what turns "the
@@ -47,14 +51,18 @@ password manager has it" into "Claude can reach it without asking you to paste i
 ## 2. Expiring `claude` OAuth login
 
 **Mechanism:** `brain-keepalive-install` installs a weekly job that runs
-`claude -p 'Reply with the single word OK.' --output-format text` — just enough
-activity that the OAuth token never lapses from inactivity.
+`claude -p 'Reply with the single word OK.' --output-format text < /dev/null` — just
+enough activity that the OAuth token never lapses from inactivity.
 
 - macOS: a LaunchAgent (`~/Library/LaunchAgents/com.claude-brain.keepalive.plist`),
   Mondays 09:15.
 - Linux: a `systemd --user` service + timer (`claude-brain-keepalive.timer`), weekly.
-- Windows (Git Bash): prints a `schtasks` one-liner for you to run once — Git Bash
-  can't register a scheduled task for you.
+- Windows (Git Bash): writes a `claude-keepalive.cmd` wrapper beside the keepalive
+  script and prints a `schtasks` one-liner pointing at it, for you to run once in
+  Command Prompt or PowerShell — the output says which; Git Bash would rewrite the
+  `/switches` as paths. The
+  wrapper calls Git Bash by its full path: in a scheduled task a bare `bash` is
+  usually WSL's launcher, not Git Bash.
 - Idempotent (safe to re-run), `--uninstall` removes it, logs to
   `~/.config/claude-brain/claude-keepalive.log`.
 - `/brain:setup` installs it and checks the reply; if it's not `OK`, it tells you to

@@ -1,5 +1,27 @@
 # brain plugin — changelog
 
+## 1.3.1 — 2026-10-03
+Windows (Git for Windows) fixes.
+- `brain-keepalive-install` printed a `schtasks` command that ran a bare `bash`; from
+  a scheduled task that is usually WSL's launcher, not Git Bash, so the keepalive
+  never ran. It now writes `~/.config/claude-brain/claude-keepalive.cmd`, which calls
+  Git Bash by full path, and the printed command points `/TR` at that wrapper
+  (quoted for `schtasks` when the path has a space). `--uninstall` removes the
+  wrapper too. **If you registered the task with an earlier version:** re-run
+  `brain-keepalive-install` and run the `schtasks` command it prints again — `/F`
+  replaces the old task.
+- The keepalive script runs `claude -p … < /dev/null`: with no stdin under a scheduler
+  the CLI waited 3s and logged a warning on every run. Re-run
+  `brain-keepalive-install` to pick this up (all platforms).
+- `brain-secret` chose `python3` because it was on PATH; on Windows that can be the
+  Microsoft Store alias, which only prints "Python was not found". It now runs each
+  candidate (`python3`, `python`, `py -3`) and takes the first Python 3.6+ that
+  works, then `jq`, and says plainly when none does.
+- `brain-secret` under a native Windows python turned every newline in a value into
+  CRLF and ended `list` lines with CR; values and lists are now written as bytes.
+- `brain-secret get` missed a key that starts with `/` on Windows: Git Bash rewrote
+  the argument into a Windows path before the parser saw it.
+
 ## 1.3.0 — 2026-09-11
 The profile consolidation trigger is now daily instead of count-based: the pass runs
 at the start of the first session of any day on which `identity/profile.md`'s

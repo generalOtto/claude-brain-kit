@@ -8,15 +8,17 @@
 #
 # macOS              → LaunchAgent ~/Library/LaunchAgents/com.claude-brain.keepalive.plist
 # Linux (systemd)     → systemd --user service+timer claude-brain-keepalive.{service,timer}
-# Windows (Git Bash)  → prints a `schtasks` one-liner for you to run yourself, exits 0
+# Windows (Git Bash)  → writes a claude-keepalive.cmd wrapper (Git Bash by full path) and
+#                       prints a `schtasks` one-liner for you to run yourself, exits 0
 #
 # Runs weekly, Mondays 09:15 local time:
-#   claude -p 'Reply with the single word OK.' --output-format text
+#   claude -p 'Reply with the single word OK.' --output-format text < /dev/null
 # Logs every run to ~/.config/claude-brain/claude-keepalive.log.
 set -euo pipefail
 
 CONF_DIR="$HOME/.config/claude-brain"
 SCRIPT="$CONF_DIR/claude-keepalive.sh"
+WRAPPER="$CONF_DIR/claude-keepalive.cmd"   # Windows only
 LOG="$CONF_DIR/claude-keepalive.log"
 LABEL="com.claude-brain.keepalive"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
@@ -39,7 +41,9 @@ mkdir -p "$(dirname "$LOG")"
 {
   echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   if command -v claude >/dev/null 2>&1; then
-    out=$(claude -p 'Reply with the single word OK.' --output-format text 2>&1)
+    # stdin from /dev/null: a scheduler hands claude no stdin, and it would wait 3s
+    # for some and log a warning on every run
+    out=$(claude -p 'Reply with the single word OK.' --output-format text 2>&1 < /dev/null)
     echo "$out"
     case "$out" in
       *OK*) : ;;
@@ -130,12 +134,59 @@ uninstall_linux() {
   echo "brain-keepalive-install: removed systemd --user timer"
 }
 
+# git_bash_exe — Windows path of the bash.exe the scheduled task should run. Task
+# Scheduler resolves a bare `bash` from the Windows PATH, where it is usually WSL's
+# launcher (or nothing) and not Git Bash, so the task has to name it in full. Prefer
+# Git for Windows' <root>\bin\bash.exe launcher; elsewhere (MSYS2, Cygwin) fall back
+# to the bash this script is running under.
+git_bash_exe() {
+  local root
+  root=$(cygpath -w /) || return 1
+  root=${root%\\}
+  if [ -f "$root\\bin\\bash.exe" ]; then
+    printf '%s\n' "$root\\bin\\bash.exe"
+  else
+    cygpath -w "$(command -v bash)"
+  fi
+}
+
+# write_windows_wrapper <bash.exe> — a .cmd beside the keepalive script for the task
+# to run. Pointing /TR at this one file keeps the bash path (usually under "Program
+# Files") out of schtasks' quoting, and `~` keeps the home path out of the file: bash
+# expands it when the task runs. CRLF, as cmd expects; `chcp 65001` because the file
+# is UTF-8 and cmd would otherwise read a non-ASCII bash path in the OEM code page.
+write_windows_wrapper() {
+  {
+    printf '@echo off\r\n'
+    printf 'rem Installed by brain-keepalive-install; the claude-brain-keepalive task runs this.\r\n'
+    printf 'rem Git Bash is called by full path: a bare "bash" in a scheduled task is not Git Bash.\r\n'
+    printf 'chcp 65001 >nul\r\n'
+    printf '"%s" -lc "~/%s"\r\n' "$1" "${SCRIPT#"$HOME"/}"
+  } > "$WRAPPER"
+}
+
 print_windows() {
   write_keepalive_script
-  echo "brain-keepalive-install: Windows detected — Git Bash can't register a scheduled"
-  echo "task for you. Run this yourself once, in an ordinary (non-admin) prompt:"
+  local bash_exe wrapper_win taskrun shells="Command Prompt or PowerShell"
+  bash_exe=$(git_bash_exe) || bash_exe=""
+  [ -n "$bash_exe" ] || { echo "brain-keepalive-install: can't work out this shell's bash.exe path (cygpath failed)" >&2; exit 1; }
+  write_windows_wrapper "$bash_exe"
+  wrapper_win=$(cygpath -w "$WRAPPER")
+  # A program path with spaces has to be quoted inside /TR's own double quotes. Single
+  # quotes work from Command Prompt and PowerShell alike, but end at an apostrophe in
+  # the path (schtasks then registers a broken task without complaint); that case
+  # needs \"...\", which only Command Prompt parses.
+  case "$wrapper_win" in
+    *" "*"'"*|*"'"*" "*) taskrun="\\\"$wrapper_win\\\""; shells="Command Prompt (not PowerShell)" ;;
+    *" "*) taskrun="'$wrapper_win'" ;;
+    *) taskrun="$wrapper_win" ;;
+  esac
+  echo "brain-keepalive-install: Windows detected — wrote the keepalive script and a"
+  echo "claude-keepalive.cmd wrapper that runs it in Git Bash. Registering the weekly task"
+  echo "is yours to do once, in an ordinary (non-admin) $shells"
+  echo "window — not Git Bash, which rewrites the /switches as paths:"
   echo
-  echo "  schtasks /Create /SC WEEKLY /D MON /ST 09:15 /TN \"claude-brain-keepalive\" /TR \"bash -lc '$SCRIPT'\" /F"
+  echo "  schtasks /Create /SC WEEKLY /D MON /ST 09:15 /TN \"claude-brain-keepalive\" /TR \"$taskrun\" /F"
   echo
   echo "Remove later with: schtasks /Delete /TN \"claude-brain-keepalive\" /F"
 }
@@ -144,7 +195,7 @@ case "${1:-}" in
   --uninstall)
     if is_windows; then
       echo "brain-keepalive-install: Windows — remove the task yourself: schtasks /Delete /TN \"claude-brain-keepalive\" /F"
-      rm -f "$SCRIPT"
+      rm -f "$SCRIPT" "$WRAPPER"
     elif is_macos; then uninstall_macos
     else uninstall_linux
     fi
