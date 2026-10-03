@@ -46,6 +46,8 @@ Six root causes cover essentially every "needs the human" ask:
   `python`, `py -3`), else `jq` — the one helper in the plugin that needs either. On
   Windows a `python3` on PATH can be the Microsoft Store alias, which only prints
   "Python was not found"; `brain-secret` skips it and says so plainly if nothing works.
+  A native Windows `jq.exe` has to be 1.7 or newer: older builds can only write CRLF
+  line ends, which would change a multi-line value, so `brain-secret` won't use one.
 
 Per the brain's secrets policy ([pointers/secrets.md](../pointers/secrets.md)), the
 brain itself still stores no secret values — `brain-secret` is what turns "the

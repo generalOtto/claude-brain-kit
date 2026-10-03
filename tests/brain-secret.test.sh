@@ -242,7 +242,75 @@ if command -v jq >/dev/null 2>&1; then
   assert_eq "$(PATH="$SB/stub:$PATH" S get FOO_KEY 2>&1)" "foo-value" "jq fallback: get by key"
   want=$(printf 'line one\nline\ttwo\nline three' | xxd -p | tr -d '\n')
   assert_eq "$(PATH="$SB/stub:$PATH" S get "$ID5" | xxd -p | tr -d '\n')" "$want" "jq fallback: multiline value is byte-exact"
+  assert_eq "$(PATH="$SB/stub:$PATH" S list | tr -cd '\r' | wc -c | tr -d ' ')" "0" "jq fallback: list output has no carriage returns"
+  assert_eq "$(PATH="$SB/stub:$PATH" S get UNICODE_KEY | xxd -p | tr -d '\n')" "70c3a4737320e29c93" "jq fallback: non-ASCII value is the same UTF-8 bytes"
+  assert_eq "$(PATH="$SB/stub:$PATH" S get /prod/db/password 2>&1)" "slash-value" "jq fallback: get by a key that starts with /"
   t_teardown
+
+  # fake_jq <dir> <crlf|lf> <yes|no> — a `jq` that wraps the real one and fixes the
+  # two things that differ between builds, so each combination runs on every
+  # platform. crlf|lf: how it writes a newline without -b (crlf = a native Windows
+  # jq.exe run from Git Bash, lf = any other jq). yes|no: whether it accepts -b
+  # (no = older than 1.7, which rejects the flag). Given -b it always writes LF.
+  REAL_JQ=$(command -v jq)
+  fake_jq() {
+    mkdir -p "$1"
+    cat > "$1/jq" <<EOF
+#!/usr/bin/env bash
+set -o pipefail
+eol=$2; args=()
+for a in "\$@"; do
+  if [ "\$a" != "-b" ]; then args+=("\$a"); continue; fi
+  if [ "$3" = no ]; then echo "jq: Unknown option -b" >&2; exit 2; fi
+  eol=lf
+done
+"$REAL_JQ" "\${args[@]}" | "$REAL_PY" -c '
+import sys
+out = sys.stdin.buffer.read().replace(b"\r\n", b"\n")
+if sys.argv[1] == "crlf":
+    out = out.replace(b"\n", b"\r\n")
+sys.stdout.buffer.write(out)
+' "\$eol"
+EOF
+    chmod +x "$1/jq"
+  }
+
+  # 13b. a jq that writes CRLF unless given -b (native Windows jq 1.7+) -> -b is used
+  secret_setup
+  store_stub "$SB/stub" python3 python py
+  fake_jq "$SB/stub" crlf yes
+  want=$(printf 'line one\nline\ttwo\nline three' | xxd -p | tr -d '\n')
+  assert_eq "$(PATH="$SB/stub:$PATH" S get "$ID5" | xxd -p | tr -d '\n')" "$want" "CRLF-writing jq: multiline value by id is byte-exact"
+  assert_eq "$(PATH="$SB/stub:$PATH" S get MULTILINE_KEY | xxd -p | tr -d '\n')" "$want" "CRLF-writing jq: multiline value by key is byte-exact"
+  assert_eq "$(PATH="$SB/stub:$PATH" S list | tr -cd '\r' | wc -c | tr -d ' ')" "0" "CRLF-writing jq: list output has no carriage returns"
+  out=$(PATH="$SB/stub:$PATH" S get DUP_KEY 2>&1 | tr -cd '\r' | wc -c | tr -d ' ')
+  assert_eq "$out" "0" "CRLF-writing jq: ambiguous-key error has no carriage returns"
+  t_teardown
+
+  # 13c. a jq that writes CRLF and has no -b (native Windows jq before 1.7) can't
+  # return a multi-line value unchanged -> refused, not used
+  secret_setup
+  store_stub "$SB/stub" python3 python py
+  fake_jq "$SB/stub" crlf no
+  out=$(PATH="$SB/stub:$PATH" S get "$ID5" 2>&1); rc=$?
+  assert_rc "$rc" 2 "CRLF-only jq: exits 2"
+  assert_contains "$out" "brain-secret: no working JSON parser" "CRLF-only jq: says what is wrong"
+  assert_lacks "$out" "line one" "CRLF-only jq: no altered value is printed"
+  t_teardown
+
+  # 13d. a jq that writes LF and has no -b (jq 1.5/1.6 on Linux or macOS) -> used as
+  # it is; -b must not be required, or those versions stop working
+  secret_setup
+  store_stub "$SB/stub" python3 python py
+  fake_jq "$SB/stub" lf no
+  want=$(printf 'line one\nline\ttwo\nline three' | xxd -p | tr -d '\n')
+  assert_eq "$(PATH="$SB/stub:$PATH" S get "$ID5" 2>&1 | xxd -p | tr -d '\n')" "$want" "LF-writing jq without -b: multiline value is byte-exact"
+  out=$(PATH="$SB/stub:$PATH" S list 2>&1)
+  assert_contains "$out" "$ID1	FOO_KEY" "LF-writing jq without -b: list works"
+  assert_eq "$(PATH="$SB/stub:$PATH" S get FOO_KEY 2>&1)" "foo-value" "LF-writing jq without -b: get by key"
+  t_teardown
+else
+  echo "  SKIP jq fallback (13-13d): jq is not installed"
 fi
 
 # 14. xtrace must never trace the access token. bws_ hands the token to bws as a

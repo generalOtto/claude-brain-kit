@@ -1,5 +1,23 @@
 # brain plugin — changelog
 
+## 1.3.3 — 2026-10-03
+`brain-secret` on Windows when `jq` is the parser (it is only used when no Python 3.6+
+runs).
+- A native Windows `jq.exe` run from Git Bash writes CRLF for every newline, so
+  `brain-secret get` put a CR in front of each line break inside a multi-line value
+  and `brain-secret list` lines ended in CR. `brain-secret` now checks how `jq` writes
+  a newline and runs it with `-b` when that is what keeps the newline a plain LF.
+- A native Windows `jq.exe` older than 1.7 has no `-b` and cannot return a multi-line
+  value unchanged. It is no longer used at all: `brain-secret` stops with its "no
+  working JSON parser" message — for `list` and single-line values too, which used
+  to work — instead of handing back an altered value. Install jq 1.7 or newer, or a
+  Python 3.6+.
+- Linux and macOS are unchanged — `jq` already writes plain LF there and keeps being
+  run without `-b` (jq 1.5 and 1.6 would reject it).
+
+Found by running the `jq` path on Windows for the first time; where `jq` is installed
+the tests now drive it on every platform through a stand-in `jq` that writes CRLF.
+
 ## 1.3.2 — 2026-10-03
 `brain-secret` printed its Bitwarden access token when run under xtrace — `bash -x
 brain-secret …`, or an xtrace inherited through an exported `SHELLOPTS` — because bash
