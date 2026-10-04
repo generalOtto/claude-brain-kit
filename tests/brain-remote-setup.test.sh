@@ -4,7 +4,8 @@ source "$(dirname "$0")/lib.sh"
 SETUP="$ROOT/tools/brain-remote/setup.sh"
 
 # Canaries stand in for the three credentials setup.sh handles — long, so an assertion
-# can't match by accident, and shaped like no real token.
+# can't match by accident, and shaped like no real token. Digit-free on purpose: with
+# a digit in it, gitleaks' generic-api-key rule would flag the OAuth one.
 OAUTH_CANARY=xtrace-canary-wrangler-oauth-that-must-never-be-printed
 PAT_CANARY=github_pat_xtrace-canary-that-must-never-be-printed
 PATH_CANARY=xtrace-canary-path-secret-shown-only-in-the-connector-url
@@ -24,11 +25,12 @@ setup_sandbox() {
   cat > "$SB/bin/npx" <<'EOF'
 #!/usr/bin/env bash
 # Fake `npx wrangler …`: a logged-in account and a worker with no secrets stored yet.
-# Every `secret put` value arrives on stdin and is kept in $SEEN/put-<NAME>.
+# Every `secret put` value arrives on stdin and is kept in $SEEN/put-<NAME>. The deploy
+# URL's subdomain is longer than a DNS label can be, so it is nobody's real worker.
 [ "${1:-}" = wrangler ] || exit 64
 case "${2:-}" in
   whoami) printf 'You are logged in\n| Account ID | 00000000000000000000000000000000 |\n' ;;
-  deploy) echo "https://brain-remote-mcp.canary.workers.dev" ;;
+  deploy) echo "https://brain-remote-mcp.a-label-longer-than-sixty-three-characters-can-never-exist-in-dns.workers.dev" ;;
   secret)
     case "${3:-}" in
       list) echo '[]' ;;

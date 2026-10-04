@@ -100,11 +100,12 @@ bootloader there without any prompt wording. The full decision table is in
   secret any time with `bash <your-clone>/tools/brain-remote/setup.sh --rotate-secret` (then update the connector
   URL); kill the whole thing with `npx wrangler delete`.
 - **Setup never traces itself.** `bash -x setup.sh` — or an xtrace inherited through
-  an exported `SHELLOPTS` — would otherwise print wrangler's OAuth token and the PAT
-  you paste. If you ran a copy from before this fix that way and the output went
-  somewhere (terminal scrollback, a log, a Claude transcript): delete that PAT on
-  GitHub and store a new one with `setup.sh --set-token`, and run
-  `npx wrangler logout`, then `npx wrangler login`, to replace the OAuth token.
+  an exported `SHELLOPTS` — would otherwise print wrangler's OAuth token, the PAT you
+  paste and the path secret. If you ever ran a copy whose first command is not
+  `set +x` that way, and the output went somewhere (terminal scrollback, a log, a
+  Claude transcript): delete that PAT on GitHub, run `npx wrangler logout`, then
+  re-run `setup.sh --set-token --rotate-secret` — it logs wrangler back in with a new
+  OAuth token, asks for a new PAT and prints a new connector URL to put on claude.ai.
 - **The server won't commit secrets.** Secret-shaped content (tokens, keys,
   credential assignments) is refused server-side — same policy as the rest of the
   kit: pointers, never values.
