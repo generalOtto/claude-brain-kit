@@ -1,5 +1,17 @@
 # brain plugin — changelog
 
+## 1.3.4 — 2026-10-13
+The session-start hook's profile-consolidation nudge (`profile: N unconsolidated
+evidence entries`) only counted evidence-log lines written as `- YYYY-MM-DD …`. A line
+with the date in bold — `- **YYYY-MM-DD** — …`, which is how the capture loop tends to
+write them — was silently skipped, so a log holding only bold-dated entries never
+nudged: six such entries appended on 2026-10-07 went unreported until the pass was
+run by hand.
+- The date extraction now accepts an optional `**` in front of the date. Nothing else
+  about the trigger changes — plain-dated lines count exactly as before.
+- `tests/profile-trigger.test.sh` gains a mixed plain/bold case that fails on the old
+  hook (counts 1) and passes on the new one (counts 3).
+
 ## 1.3.3 — 2026-10-03
 `brain-secret` on Windows when `jq` is the parser (it is only used when no Python 3.6+
 runs).

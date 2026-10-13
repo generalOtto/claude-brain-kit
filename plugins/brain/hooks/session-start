@@ -164,7 +164,7 @@ if [ -f "$PROFILE" ]; then
     while IFS= read -r d; do
       [ -n "$d" ] || continue
       [ "$d" \> "$last_consolidated" ] && n=$((n + 1))
-    done < <(awk '/^## Evidence log/{f=1;next} /^## /{f=0} f' "$PROFILE" | sed -n 's/^- \([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\).*/\1/p')
+    done < <(awk '/^## Evidence log/{f=1;next} /^## /{f=0} f' "$PROFILE" | sed -n 's/^- \**\([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\).*/\1/p')
     [ "$n" -gt 0 ] && suffix="$suffix · profile: ${n} unconsolidated evidence entries — run the consolidation pass (see conventions/profile-evaluation.md)"
   fi
 fi

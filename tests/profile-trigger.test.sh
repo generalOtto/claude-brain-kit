@@ -60,4 +60,15 @@ write_profile 'last-consolidated: "2026-09-01"' '- 2026-09-05 (statement) said a
 out=$(run_hook); assert_contains "$out" "profile: 1 unconsolidated evidence entries" "quoted last-consolidated value parsed"
 t_teardown
 
+# bold-dated entries (`- **YYYY-MM-DD** — …`) count alongside plain ones — the sed only
+# saw `- YYYY-MM-DD` before 1.3.4, so a log of bold-dated entries never nudged
+t_setup; retention 3650
+write_profile 'last-consolidated: 2026-10-05' \
+'- **2026-10-07** — (statement) bold-dated, said a thing
+- **2026-10-07** — (decision) bold-dated, chose a thing
+- 2026-10-06 (statement) plain-dated, said a thing
+- **2026-10-01** — (statement) bold-dated but older than last-consolidated'
+out=$(run_hook); assert_contains "$out" "profile: 3 unconsolidated evidence entries" "bold-dated entries counted with plain ones"
+t_teardown
+
 t_report
