@@ -1,5 +1,33 @@
 # brain plugin — changelog
 
+## 1.3.5 — 2026-10-19
+The Linux keepalive never reached `claude`. `brain-keepalive-install` wrote its
+`systemd --user` service with no PATH of its own, and the user manager's PATH has no
+`~/.local/bin` — where the native Claude Code installer puts `claude` — so every
+scheduled run logged `keepalive: claude CLI not found on PATH` and the OAuth login was
+left to lapse anyway. Every version since the keepalive arrived in 1.1.0 did this on
+Linux whenever `claude` lived outside the system directories, as the native
+installer's `~/.local/bin` does.
+- The installer now finds `claude` at install time and writes
+  `Environment="PATH=<its directory>:/usr/local/bin:/usr/bin:/bin"` into the service.
+  The directory, not the resolved binary: the native installer's `~/.local/bin/claude`
+  is a symlink it repoints on every update. The value is quoted, with `%` doubled, so
+  a directory with a space or a `%` survives systemd's parsing. When `claude` is a
+  script (an npm install), `node`'s directory is added too, since a version manager
+  may keep it outside the system directories.
+- No `claude` on PATH at install time: the installer says so, exits 1 and installs
+  nothing, instead of a timer that can only log failures.
+- **Already installed?** Re-run `brain-keepalive-install` after updating — it rewrites
+  the service. Delete any hand-made drop-in that sets PATH: a drop-in is applied after
+  the unit, so it would override the new line.
+- `/brain:setup` relays the installer's message and skips its OK check when the
+  installer exits 1.
+- macOS and Windows are unchanged.
+
+`tests/brain-keepalive-install.test.sh` puts a `claude` in the sandbox's
+`~/.local/bin` and runs the keepalive script with exactly the service's PATH in an
+empty environment, as systemd does; on 1.3.4 that run logs "not found".
+
 ## 1.3.4 — 2026-10-13
 The session-start hook's profile-consolidation nudge (`profile: N unconsolidated
 evidence entries`) only counted evidence-log lines written as `- YYYY-MM-DD …`. A line

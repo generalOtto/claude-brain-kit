@@ -37,6 +37,18 @@ EOF
   chmod +x "$SB/stubbin/claude"
 }
 
+# native_claude [dir] — a `claude` where the native installer puts it (~/.local/bin by
+# default), on the installing shell's PATH but in no system directory. It answers
+# like the real ping and needs nothing from the environment, so it still works under
+# the bare environment a systemd --user manager gives the service.
+native_claude() {
+  NATIVE_BIN="${1:-$HOME/.local/bin}"
+  mkdir -p "$NATIVE_BIN"
+  printf '#!/bin/sh\necho OK\n' > "$NATIVE_BIN/claude"
+  chmod +x "$NATIVE_BIN/claude"
+  export PATH="$NATIVE_BIN:$PATH"
+}
+
 SCRIPT_FILE_REL=".config/claude-brain/claude-keepalive.sh"
 WRAPPER_REL=".config/claude-brain/claude-keepalive.cmd"
 LOG_REL=".config/claude-brain/claude-keepalive.log"
@@ -109,6 +121,7 @@ case "$(uname -s)" in
   *)
     # 1. install writes the keepalive script + systemd unit/timer and enables it
     keepalive_setup
+    native_claude
     K >/dev/null
     assert_eq "$([ -x "$HOME/$SCRIPT_FILE_REL" ] && echo yes)" "yes" "linux: keepalive script written + executable"
     assert_contains "$(cat "$HOME/$SCRIPT_FILE_REL")" "Reply with the single word OK." "linux: keepalive script pings claude"
@@ -120,6 +133,7 @@ case "$(uname -s)" in
 
     # 2. idempotent: re-running is a clean re-install, no errors, files still there
     keepalive_setup
+    native_claude
     K >/dev/null; rc1=$?
     K >/dev/null; rc2=$?
     assert_rc "$rc1" 0 "linux: first install exits 0"
@@ -129,12 +143,69 @@ case "$(uname -s)" in
 
     # 3. uninstall removes everything
     keepalive_setup
+    native_claude
     K >/dev/null
     K --uninstall >/dev/null
     assert_eq "$([ -f "$HOME/$SERVICE_REL" ] || echo gone)" "gone" "linux: uninstall removes service"
     assert_eq "$([ -f "$HOME/$TIMER_REL" ] || echo gone)" "gone" "linux: uninstall removes timer"
     assert_eq "$([ -f "$HOME/$SCRIPT_FILE_REL" ] || echo gone)" "gone" "linux: uninstall removes keepalive script"
     assert_contains "$(cat "$STUB_LOG")" "systemctl --user disable --now" "linux: uninstall disables the timer"
+    t_teardown
+
+    # 4. the systemd --user manager's PATH has no ~/.local/bin, where the native
+    # installer puts claude: the service carries its own PATH, starting with the
+    # directory claude was found in at install time. The keepalive script then runs
+    # with exactly that PATH in an otherwise empty environment, as systemd runs it
+    # (no Environment= line -> the bare system PATH, which can't reach claude).
+    keepalive_setup
+    native_claude
+    K >/dev/null
+    unit_path=$(sed -n 's/^Environment="PATH=\(.*\)"$/\1/p' "$HOME/$SERVICE_REL")
+    assert_eq "$unit_path" "$NATIVE_BIN:/usr/local/bin:/usr/bin:/bin" "linux: service PATH starts with claude's install-time directory"
+    env -i HOME="$HOME" PATH="${unit_path:-/usr/local/bin:/usr/bin:/bin}" "$BASH" "$HOME/$SCRIPT_FILE_REL"
+    log=$(cat "$HOME/$LOG_REL" 2>/dev/null)
+    assert_contains "$log" "OK" "linux: keepalive run with the service's PATH reaches claude"
+    assert_lacks "$log" "not found" "linux: ... and never logs claude CLI not found"
+    t_teardown
+
+    # 5. a claude directory with a space and a %: quoted for systemd's word splitting,
+    # % doubled so systemd doesn't read it as a specifier
+    keepalive_setup
+    native_claude "$HOME/odd dir%/bin"
+    K >/dev/null
+    assert_contains "$(cat "$HOME/$SERVICE_REL")" "Environment=\"PATH=$HOME/odd dir%%/bin:/usr/local/bin:/usr/bin:/bin\"" "linux: service PATH quoted, % escaped"
+    t_teardown
+
+    # 5b. claude as a script (an npm install) with node in a version manager's
+    # directory: node's directory comes along, claude's first, nothing twice
+    keepalive_setup
+    native_claude "$HOME/npm/bin"
+    printf '#!/usr/bin/env node\n' > "$NATIVE_BIN/claude"
+    mkdir -p "$HOME/fnm/bin"; printf '#!/bin/sh\n' > "$HOME/fnm/bin/node"; chmod +x "$HOME/fnm/bin/node"
+    PATH="$HOME/fnm/bin:$PATH" K >/dev/null
+    assert_contains "$(cat "$HOME/$SERVICE_REL")" "Environment=\"PATH=$HOME/npm/bin:$HOME/fnm/bin:/usr/local/bin:/usr/bin:/bin\"" "linux: script claude brings node's directory"
+    t_teardown
+
+    # 5c. claude already in a system directory: the PATH lists it once (checked on
+    # the helper itself — the test can't put a claude in the real /usr/bin)
+    keepalive_setup
+    assert_eq "$(bash -c 'source <(sed -n "/^dedupe_path()/,/^}/p" "$1"); dedupe_path "/usr/bin:/usr/local/bin:/usr/bin:/bin:/a*b:/a*b"' _ "$KEEPALIVE")" "/usr/bin:/usr/local/bin:/bin:/a*b" "linux: PATH dedupe keeps the first occurrence"
+    t_teardown
+
+    # 6. no claude at install time: a clear message, non-zero exit, nothing installed
+    # (a service with no way to reach claude would only log failures every week).
+    # PATH keeps just the stubs and the system directories, so a claude installed on
+    # the machine running the tests can't leak in.
+    keepalive_setup
+    if PATH=/usr/bin:/bin command -v claude >/dev/null 2>&1; then
+      echo "  SKIP linux: no-claude case (a claude in /usr/bin or /bin on this machine)"
+    else
+      out=$(PATH="$SB/stubbin:/usr/bin:/bin" K 2>&1); rc=$?
+      assert_rc "$rc" 1 "linux: no claude -> exit 1"
+      assert_contains "$out" "claude CLI not found" "linux: no claude -> says so"
+      assert_eq "$([ -e "$HOME/$SERVICE_REL" ] || echo none)" "none" "linux: no claude -> no service written"
+      assert_lacks "$(cat "$STUB_LOG")" "enable --now" "linux: no claude -> timer not enabled"
+    fi
     t_teardown
     ;;
 esac
