@@ -40,11 +40,14 @@ EOF
 # native_claude [dir] — a `claude` where the native installer puts it (~/.local/bin by
 # default), on the installing shell's PATH but in no system directory. It answers
 # like the real ping and needs nothing from the environment, so it still works under
-# the bare environment a systemd --user manager gives the service.
+# the bare environment a systemd --user manager or launchd gives the job. No #! line:
+# the real one is a binary, not a script, so the installer must not add node's
+# directory (a node on the test machine's PATH would otherwise leak into the PATH the
+# tests expect); bash runs a #!-less executable as a shell script.
 native_claude() {
   NATIVE_BIN="${1:-$HOME/.local/bin}"
   mkdir -p "$NATIVE_BIN"
-  printf '#!/bin/sh\necho OK\n' > "$NATIVE_BIN/claude"
+  printf 'echo OK\n' > "$NATIVE_BIN/claude"
   chmod +x "$NATIVE_BIN/claude"
   export PATH="$NATIVE_BIN:$PATH"
 }
@@ -65,33 +68,7 @@ restore_cp() { [ -z "$ORIG_CP" ] || cmd.exe //c chcp "$ORIG_CP" >/dev/null 2>&1;
 
 case "$(uname -s)" in
   Darwin)
-    # 1. install writes the keepalive script + LaunchAgent and bootstraps it
-    keepalive_setup
-    K >/dev/null
-    assert_eq "$([ -x "$HOME/$SCRIPT_FILE_REL" ] && echo yes)" "yes" "macOS: keepalive script written + executable"
-    assert_contains "$(cat "$HOME/$SCRIPT_FILE_REL")" "Reply with the single word OK." "macOS: keepalive script pings claude"
-    assert_eq "$([ -f "$HOME/$PLIST_REL" ] && echo yes)" "yes" "macOS: LaunchAgent plist written"
-    assert_contains "$(cat "$HOME/$PLIST_REL")" "com.claude-brain.keepalive" "macOS: plist has the right label"
-    assert_contains "$(cat "$STUB_LOG")" "launchctl bootstrap" "macOS: bootstraps the agent"
-    t_teardown
-
-    # 2. idempotent: re-running boots out the old agent before bootstrapping again
-    keepalive_setup
-    K >/dev/null; K >/dev/null
-    log=$(cat "$STUB_LOG")
-    assert_eq "$(printf '%s\n' "$log" | grep -c 'launchctl bootstrap')" "2" "macOS: two installs -> two bootstraps"
-    assert_eq "$(printf '%s\n' "$log" | grep -c 'launchctl bootout')" "2" "macOS: bootout-first each time (idempotent)"
-    assert_eq "$([ -f "$HOME/$PLIST_REL" ] && echo yes)" "yes" "macOS: plist still present after re-install"
-    t_teardown
-
-    # 3. uninstall removes everything
-    keepalive_setup
-    K >/dev/null
-    K --uninstall >/dev/null
-    assert_eq "$([ -f "$HOME/$PLIST_REL" ] || echo gone)" "gone" "macOS: uninstall removes plist"
-    assert_eq "$([ -f "$HOME/$SCRIPT_FILE_REL" ] || echo gone)" "gone" "macOS: uninstall removes keepalive script"
-    assert_contains "$(cat "$STUB_LOG")" "launchctl bootout" "macOS: uninstall boots the agent out"
-    t_teardown
+    : # the macOS branch runs on every platform, under a fake uname — see below
     ;;
   MINGW*|MSYS*|CYGWIN*)
     # 1. the real thing, with the real cygpath: install, then run the wrapper through
@@ -221,6 +198,120 @@ assert_contains "$(cat "$HOME/$LOG_REL" 2>/dev/null)" "OK" "keepalive: the reply
 assert_eq "$([ -f "$STDIN_SEEN" ] && echo yes)" "yes" "keepalive: the fake claude ran"
 assert_eq "$(cat "$STDIN_SEEN" 2>/dev/null)" "" "keepalive: claude reads /dev/null, not the caller's stdin"
 t_teardown
+
+# --- the macOS branch, on every platform --------------------------------------------
+# A fake uname puts the installer on macOS (launchctl is already stubbed), so CI
+# (Linux) covers the LaunchAgent too.
+mac_setup() {
+  keepalive_setup
+  mkdir -p "$SB/macstub"
+  printf '#!/bin/sh\necho Darwin\n' > "$SB/macstub/uname"
+  chmod +x "$SB/macstub/uname"
+}
+KM() { PATH="$SB/macstub:$PATH" bash "$KEEPALIVE" "$@"; }
+LAUNCHD_PATH="/usr/bin:/bin:/usr/sbin:/sbin"   # launchd's PATH for an agent with none of its own
+# plist_ok <file> — the plist parses as a property list (plutil on a Mac, plistlib elsewhere)
+plist_ok() {
+  if command -v plutil >/dev/null 2>&1; then plutil -lint -s "$1" >/dev/null 2>&1
+  else python3 -I -c 'import plistlib,sys; plistlib.load(open(sys.argv[1],"rb"))' "$1" 2>/dev/null; fi
+}
+# plist_path <file> — the agent's EnvironmentVariables PATH, empty when it sets none
+# (plutil's `raw` needs macOS 12+; plistlib otherwise)
+plist_path() {
+  { command -v plutil >/dev/null 2>&1 && plutil -extract EnvironmentVariables.PATH raw -o - "$1" 2>/dev/null; } ||
+    { command -v python3 >/dev/null 2>&1 && python3 -I -c 'import plistlib,sys; print(plistlib.load(open(sys.argv[1],"rb")).get("EnvironmentVariables",{}).get("PATH",""))' "$1" 2>/dev/null; }
+}
+if ! command -v plutil >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1; then
+  echo "  SKIP macOS: neither plutil nor python3 to read the plist"
+else
+
+# M1. install writes the keepalive script + LaunchAgent and bootstraps it
+mac_setup
+native_claude
+KM >/dev/null
+assert_eq "$([ -x "$HOME/$SCRIPT_FILE_REL" ] && echo yes)" "yes" "macOS: keepalive script written + executable"
+assert_eq "$([ -f "$HOME/$PLIST_REL" ] && echo yes)" "yes" "macOS: LaunchAgent plist written"
+assert_eq "$(plist_ok "$HOME/$PLIST_REL" && echo valid)" "valid" "macOS: plist is a valid property list"
+assert_contains "$(cat "$HOME/$PLIST_REL")" "com.claude-brain.keepalive" "macOS: plist has the right label"
+assert_contains "$(cat "$STUB_LOG")" "launchctl bootstrap" "macOS: bootstraps the agent"
+t_teardown
+
+# M2. idempotent: re-running boots out the old agent before bootstrapping again
+mac_setup
+native_claude
+KM >/dev/null; KM >/dev/null
+log=$(cat "$STUB_LOG")
+assert_eq "$(printf '%s\n' "$log" | grep -c 'launchctl bootstrap')" "2" "macOS: two installs -> two bootstraps"
+assert_eq "$(printf '%s\n' "$log" | grep -c 'launchctl bootout')" "2" "macOS: bootout-first each time (idempotent)"
+t_teardown
+
+# M3. uninstall removes everything
+mac_setup
+native_claude
+KM >/dev/null
+KM --uninstall >/dev/null
+assert_eq "$([ -f "$HOME/$PLIST_REL" ] || echo gone)" "gone" "macOS: uninstall removes plist"
+assert_eq "$([ -f "$HOME/$SCRIPT_FILE_REL" ] || echo gone)" "gone" "macOS: uninstall removes keepalive script"
+assert_contains "$(cat "$STUB_LOG")" "launchctl bootout" "macOS: uninstall boots the agent out"
+t_teardown
+
+# M4. launchd's default PATH has no ~/.local/bin (native installer) or /opt/homebrew/bin:
+# the plist carries its own PATH, starting with claude's install-time directory. The
+# keepalive script then runs with exactly that PATH in an otherwise empty environment,
+# as launchd runs it (no EnvironmentVariables -> launchd's default, which can't reach claude).
+mac_setup
+native_claude
+KM >/dev/null
+agent_path=$(plist_path "$HOME/$PLIST_REL")
+assert_eq "$agent_path" "$NATIVE_BIN:/usr/local/bin:/opt/homebrew/bin:$LAUNCHD_PATH" "macOS: agent PATH starts with claude's install-time directory"
+env -i HOME="$HOME" PATH="${agent_path:-$LAUNCHD_PATH}" "$BASH" "$HOME/$SCRIPT_FILE_REL"
+log=$(cat "$HOME/$LOG_REL" 2>/dev/null)
+assert_contains "$log" "OK" "macOS: keepalive run with the agent's PATH reaches claude"
+assert_lacks "$log" "not found" "macOS: ... and never logs claude CLI not found"
+t_teardown
+
+# M5. a claude directory with XML's special characters and a space: escaped in the
+# plist, read back exactly
+mac_setup
+native_claude "$HOME/a&b <c> d/bin"
+KM >/dev/null
+assert_eq "$(plist_ok "$HOME/$PLIST_REL" && echo valid)" "valid" "macOS: plist stays valid with & < > in the path"
+assert_eq "$(plist_path "$HOME/$PLIST_REL")" "$HOME/a&b <c> d/bin:/usr/local/bin:/opt/homebrew/bin:$LAUNCHD_PATH" "macOS: escaped PATH reads back exactly"
+t_teardown
+
+# M5b. the same characters in $HOME itself: the script and log paths are escaped too
+mac_setup
+export HOME="$SB/h&o<m>e"; mkdir -p "$HOME"
+native_claude
+KM >/dev/null
+assert_eq "$(plist_ok "$HOME/$PLIST_REL" && echo valid)" "valid" "macOS: plist stays valid with & < > in \$HOME"
+assert_eq "$(plist_path "$HOME/$PLIST_REL")" "$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$LAUNCHD_PATH" "macOS: ... and its PATH reads back exactly"
+t_teardown
+
+# M6. claude as a script (an npm install) with node in a version manager's
+# directory: node's directory comes along, claude's first
+mac_setup
+native_claude "$HOME/npm/bin"
+printf '#!/usr/bin/env node\n' > "$NATIVE_BIN/claude"
+mkdir -p "$HOME/fnm/bin"; printf '#!/bin/sh\n' > "$HOME/fnm/bin/node"; chmod +x "$HOME/fnm/bin/node"
+PATH="$HOME/fnm/bin:$PATH" KM >/dev/null
+assert_eq "$(plist_path "$HOME/$PLIST_REL")" "$HOME/npm/bin:$HOME/fnm/bin:/usr/local/bin:/opt/homebrew/bin:$LAUNCHD_PATH" "macOS: script claude brings node's directory"
+t_teardown
+
+# M7. no claude at install time: a clear message, non-zero exit, nothing installed
+mac_setup
+if PATH=/usr/bin:/bin command -v claude >/dev/null 2>&1; then
+  echo "  SKIP macOS: no-claude case (a claude in /usr/bin or /bin on this machine)"
+else
+  out=$(PATH="$SB/macstub:$SB/stubbin:/usr/bin:/bin" bash "$KEEPALIVE" 2>&1); rc=$?
+  assert_rc "$rc" 1 "macOS: no claude -> exit 1"
+  assert_contains "$out" "claude CLI not found" "macOS: no claude -> says so"
+  assert_eq "$([ -e "$HOME/$PLIST_REL" ] || echo none)" "none" "macOS: no claude -> no plist written"
+  assert_lacks "$(cat "$STUB_LOG")" "bootstrap" "macOS: no claude -> agent not bootstrapped"
+fi
+t_teardown
+
+fi
 
 # --- the Windows branch, on every platform ------------------------------------------
 # A fake uname puts the installer on Windows and a fake cygpath answers for Git Bash,

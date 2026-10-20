@@ -47,8 +47,8 @@ delete files or notes, touch only the settings.json keys named below, and never 
 8. **Keepalive.** Run `brain-keepalive-install`. On Windows it writes the keepalive
    script plus a `.cmd` wrapper and prints a `schtasks` command instead of installing
    a job: show the human that command verbatim, to run once in the shell its output
-   names (Command Prompt or PowerShell — not Git Bash). If it exits 1 (Linux, no
-   `claude` on PATH), relay its message and skip the OK check. Otherwise run
+   names (Command Prompt or PowerShell — not Git Bash). If it exits 1 (macOS or
+   Linux, no `claude` on PATH), relay its message and skip the OK check. Otherwise run
    `claude -p 'Reply with the single word OK.' --output-format text < /dev/null`; if
    it does not report
    OK (expired token, error, etc.), tell the human to run `claude login` once.

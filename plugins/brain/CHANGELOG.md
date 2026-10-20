@@ -1,5 +1,38 @@
 # brain plugin — changelog
 
+## 1.3.6 — 2026-10-20
+The macOS keepalive had the same flaw 1.3.5 fixed on Linux. Its LaunchAgent set no
+PATH, so the keepalive script ran with launchd's default `/usr/bin:/bin:/usr/sbin:/sbin`,
+which has none of `~/.local/bin` (the native Claude Code installer),
+`/opt/homebrew/bin` (Homebrew) or `/usr/local/bin` (Intel Homebrew, global npm). With `claude` in any of them, every scheduled run would
+log `keepalive: claude CLI not found on PATH` and the OAuth login would lapse anyway.
+This was worked out from launchd's documented default PATH and the plist the installer
+wrote. Nobody has yet seen it in a log on a Mac. Every version since 1.1.0 wrote that
+plist.
+- The installer now finds `claude` at install time and writes
+  `<key>EnvironmentVariables</key><dict><key>PATH</key><string>…</string></dict>` into
+  the plist. The value is `claude`'s directory, then `/usr/local/bin:/opt/homebrew/bin`
+  and launchd's default. As on Linux, it adds `node`'s directory when `claude` is a
+  script (an npm install). The value is XML-escaped, and so are the script and log
+  paths, so a `claude` directory or home directory containing `&`, `<` or `>` still
+  gives a valid plist.
+- No `claude` on PATH at install time: the installer says so, exits 1 and installs
+  nothing, the same as on Linux.
+- **Already installed?** Re-run `brain-keepalive-install` after updating. It rewrites
+  the plist and bootstraps the agent again.
+  `launchctl kickstart gui/$(id -u)/com.claude-brain.keepalive` runs it once now. Then
+  check `~/.config/claude-brain/claude-keepalive.log`.
+- `/brain:setup`'s keepalive step mentions macOS as well as Linux where the installer can
+  exit 1.
+- Linux and Windows behave as before. The Linux service's PATH comes from the same
+  helper and is unchanged.
+
+`tests/brain-keepalive-install.test.sh` now runs the macOS branch on every platform
+under a fake `uname`, so the Linux CI covers it. The tests read the plist with `plutil`
+or Python's `plistlib`, check that it parses, and run the keepalive script with exactly
+the agent's PATH in an empty environment. On 1.3.5 that run logs "not found", the
+`EnvironmentVariables` key is missing, and the installer installs without `claude`.
+
 ## 1.3.5 — 2026-10-19
 The Linux keepalive never reached `claude`. `brain-keepalive-install` wrote its
 `systemd --user` service with no PATH of its own, and the user manager's PATH has no

@@ -57,7 +57,47 @@ EOS
   chmod +x "$SCRIPT"
 }
 
+abs_dir() { CDPATH='' cd -- "$(dirname -- "$1")" && pwd; }
+# dedupe_path — a PATH with each directory once, first occurrence kept
+dedupe_path() {
+  local out="" d parts
+  IFS=: read -ra parts <<< "$1"
+  for d in "${parts[@]}"; do
+    [ -n "$d" ] || continue
+    case ":$out:" in *":$d:"*) ;; *) out=${out:+$out:}$d ;; esac
+  done
+  printf '%s' "$out"
+}
+
+# job_path <system dirs> — the PATH the scheduled job gets. Neither a systemd --user
+# manager nor launchd has ~/.local/bin (where the native installer puts claude) on its
+# PATH, and launchd has no Homebrew either, so the job names the directory claude is
+# in now, ahead of the system ones. The directory, not the resolved binary: the
+# installer's ~/.local/bin/claude is a symlink it repoints on every update. A claude
+# that is a script (an npm install) also needs its node, which a version manager may
+# keep elsewhere, so node's directory comes along too. Fails when there is no claude.
+job_path() {
+  local bin dir nd path="$1"
+  bin=$(type -P claude) || return 1
+  if [ "$(head -c 2 "$bin" 2>/dev/null)" = "#!" ] && type -P node >/dev/null; then
+    nd=$(abs_dir "$(type -P node)") && path="$nd:$path"
+  fi
+  dir=$(abs_dir "$bin") || return 1
+  dedupe_path "$dir:$path"
+}
+
+no_claude() {
+  echo "brain-keepalive-install: claude CLI not found on PATH — install Claude Code, open a new shell so claude is on PATH, then re-run brain-keepalive-install" >&2
+  exit 1
+}
+
+# xml_escape — text safe inside a plist <string>. sed, not ${//}: bash 5.2 reads an
+# unquoted & in a replacement as the matched text.
+xml_escape() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
 install_macos() {
+  local path
+  path=$(job_path "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin") || no_claude
   write_keepalive_script
   mkdir -p "$(dirname "$PLIST")"
   cat > "$PLIST" <<PLIST_EOF
@@ -70,16 +110,20 @@ install_macos() {
   <array>
     <string>/usr/bin/env</string>
     <string>bash</string>
-    <string>$SCRIPT</string>
+    <string>$(xml_escape "$SCRIPT")</string>
   </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>$(xml_escape "$path")</string>
+  </dict>
   <key>StartCalendarInterval</key>
   <dict>
     <key>Weekday</key><integer>1</integer>
     <key>Hour</key><integer>9</integer>
     <key>Minute</key><integer>15</integer>
   </dict>
-  <key>StandardOutPath</key><string>$LOG</string>
-  <key>StandardErrorPath</key><string>$LOG</string>
+  <key>StandardOutPath</key><string>$(xml_escape "$LOG")</string>
+  <key>StandardErrorPath</key><string>$(xml_escape "$LOG")</string>
 </dict>
 </plist>
 PLIST_EOF
@@ -99,45 +143,19 @@ uninstall_macos() {
   echo "brain-keepalive-install: removed LaunchAgent"
 }
 
-abs_dir() { CDPATH='' cd -- "$(dirname -- "$1")" && pwd; }
-# dedupe_path — a PATH with each directory once, first occurrence kept
-dedupe_path() {
-  local out="" d parts
-  IFS=: read -ra parts <<< "$1"
-  for d in "${parts[@]}"; do
-    [ -n "$d" ] || continue
-    case ":$out:" in *":$d:"*) ;; *) out=${out:+$out:}$d ;; esac
-  done
-  printf '%s' "$out"
-}
-
-# service_path — the PATH line for the systemd unit. The systemd --user manager's own
-# PATH has no ~/.local/bin, where the native installer puts claude, so the service
-# names the directory claude is in now, ahead of the system ones. The directory, not
-# the resolved binary: the installer's ~/.local/bin/claude is a symlink it repoints on
-# every update. A claude that is a script (an npm install) also needs its node, which
-# a version manager may keep elsewhere, so node's directory comes along too. Quoted
-# for systemd's word splitting, with \ and " escaped inside the quotes and % doubled
-# so systemd doesn't read it as a specifier.
+# service_path — the Environment= line for the systemd unit: job_path, quoted for
+# systemd's word splitting, with \ and " escaped inside the quotes and % doubled so
+# systemd doesn't read it as a specifier.
 service_path() {
-  local bin dir nd path="/usr/local/bin:/usr/bin:/bin"
-  bin=$(type -P claude) || return 1
-  if [ "$(head -c 2 "$bin" 2>/dev/null)" = "#!" ] && type -P node >/dev/null; then
-    nd=$(abs_dir "$(type -P node)") && path="$nd:$path"
-  fi
-  dir=$(abs_dir "$bin") || return 1
-  path="$dir:$path"
-  path=$(dedupe_path "$path")
+  local path
+  path=$(job_path "/usr/local/bin:/usr/bin:/bin") || return 1
   path=${path//\\/\\\\}; path=${path//\"/\\\"}; path=${path//%/%%}
   printf 'Environment="PATH=%s"\n' "$path"
 }
 
 install_linux() {
   local env_line
-  env_line=$(service_path) || {
-    echo "brain-keepalive-install: claude CLI not found on PATH — install Claude Code, open a new shell so claude is on PATH, then re-run brain-keepalive-install" >&2
-    exit 1
-  }
+  env_line=$(service_path) || no_claude
   write_keepalive_script
   mkdir -p "$SYSTEMD_DIR"
   cat > "$SERVICE" <<EOS

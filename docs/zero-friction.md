@@ -62,10 +62,12 @@ enough activity that the OAuth token never lapses from inactivity.
 - macOS: a LaunchAgent (`~/Library/LaunchAgents/com.claude-brain.keepalive.plist`),
   Mondays 09:15.
 - Linux: a `systemd --user` service + timer (`claude-brain-keepalive.timer`), weekly.
-  The user manager's PATH has no `~/.local/bin`, where the native installer puts
-  `claude`, so the service gets an `Environment="PATH=…"` line naming the directory
-  `claude` is in at install time (plus `node`'s, for an npm-installed `claude`). If `claude` later moves, re-run the installer; if
-  it isn't installed yet, the installer says so and installs nothing.
+- On both, the scheduler's own PATH has no `~/.local/bin`, where the native installer
+  puts `claude` (and launchd's has neither Homebrew nor `/usr/local/bin`), so the job carries a PATH
+  naming the directory `claude` is in at install time (plus `node`'s, for an
+  npm-installed `claude`): an `EnvironmentVariables` entry in the plist, an
+  `Environment="PATH=…"` line in the service. If `claude` later moves, re-run the
+  installer; if it isn't installed yet, the installer says so and installs nothing.
 - Windows (Git Bash): writes a `claude-keepalive.cmd` wrapper beside the keepalive
   script and prints a `schtasks` one-liner pointing at it, for you to run once in
   Command Prompt or PowerShell — the output says which; Git Bash would rewrite the
