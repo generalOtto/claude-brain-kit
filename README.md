@@ -6,14 +6,19 @@ repo.**
 Claude forgets you every session. This kit fixes that with the simplest thing that
 works: a private GitHub repo of markdown notes that *is* Claude's long-term memory —
 who you are, how you like to work, what you're building together, and the history of
-it all. No database, no daemon, no server, no subscription. Files, git, one client
-plugin, and a protocol.
+it all. No database, no daemon, no server, no subscription — and **no LLM API keys**:
+it runs inside the Claude desktop app and Claude Code you already use. Files, git,
+one client plugin, and a protocol.
 
 Set it up in ~10 minutes. The first Claude session **interviews you** and writes its
 own brain.
 
 ## What you get
 
+- 🔑 **No API keys, no extra bill** — nothing calls an LLM API on your behalf. The
+  brain plugs straight into the Claude desktop app and Claude Code, so it runs on
+  the Claude plan you already have: no Anthropic/OpenAI key to create, paste, rotate,
+  or pay per token for.
 - 🪪 **A person-level brain** — identity, preferences, conventions, projects, and a
   shared journal that follow you across every machine and project. (Claude's native
   auto-memory is per-project and per-machine; this is the layer above it.)
