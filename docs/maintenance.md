@@ -22,8 +22,10 @@ so editing is never lossy.
 **Delete what's wrong.** A wrong note is worse than no note — Claude will act on it.
 Deleting is safe (git remembers) and keeps trust in the brain absolute.
 
-**Journal the days that mattered.** Not every session — milestones, big decisions,
-good days. The journal is where the *relationship* accumulates, not just the facts.
+**Journal every day that wrote to the brain.** Not every session — but a day with brain
+commits and no `journal/<date>-*.md` is one the plugin's Stop hook refuses to end quietly
+(see `how-it-works.md`). Quiet days need nothing. The journal is where the *relationship*
+accumulates, not just the facts.
 
 **Let the list and the log breathe.** `TODO.md` stays trustworthy when done items
 actually move to the done log and stale `next:` dates get re-aimed — say "todos" and
@@ -71,7 +73,9 @@ plugin's tests — don't reach it on their own. The plugin closes that gap:
   URL by default; its base is inferred from its first commit's date (the kit commit
   current when you used the template). A brain older than the kit itself has no base —
   `/brain:update` then only takes kit-owned paths outright, and records a base for
-  next time.
+  next time. Files that exist only in your brain under those paths (your own `docs/`,
+  `tools/`) are listed as `yours` and never removed. If your brain is the one the kit
+  was extracted *from*, `repo off` is the honest setting.
 
 ## What NOT to store (the anti-bloat rules)
 

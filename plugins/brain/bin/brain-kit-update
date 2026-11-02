@@ -112,14 +112,17 @@ case "${1:-}" in
   files)
     fetch_kit; find_base
     if [ "$BASE_SRC" = none ]; then
-      echo "# no base: comparing your current kit-owned files with the kit's (A = only in the kit, D = only here)"
+      echo "# no base: comparing your current kit-owned files with the kit's (A = only in the kit, D = only here — yours, never removed)"
       # shellcheck disable=SC2206  # KIT_OWNED is a deliberate word list
       diff_args=(HEAD kit/main -- $KIT_OWNED)
     else diff_args=("$BASE" kit/main); fi
     git -C "$BRAIN" diff --name-status "${diff_args[@]}" ':(exclude).kit-upstream' |
     while IFS=$'\t' read -r st p p2; do
       case "$st" in R*|C*) p="$p2" ;; esac
-      printf '%s\t%s\t%s\n' "$(tag_path "$p")" "${st:0:1}" "$p"
+      tag=$(tag_path "$p")
+      # no base: a file only this brain has under a kit-owned path is this brain's own work, not a kit deletion
+      [ "$BASE_SRC" = none ] && [ "${st:0:1}" = D ] && tag=yours
+      printf '%s\t%s\t%s\n' "$tag" "${st:0:1}" "$p"
     done
     ;;
   apply)
@@ -130,7 +133,15 @@ case "${1:-}" in
     if [ "$BASE_SRC" = none ]; then
       # no common base to merge from: taking the kit's version outright is only safe for kit-owned paths
       for p in "$@"; do [ "$(tag_path "$p")" = kit ] || die "no base: '$p' is yours — with nothing to merge from it would be overwritten; port the kit's change by hand (git -C '$BRAIN' show kit/main:$p)"; done
-      from=HEAD
+      # ... and only for files the kit actually has there: a file that exists only in this brain under a
+      # kit-owned path (its own docs/, tools/) is not a kit deletion to replay — HEAD..kit/main would stage its removal
+      from=HEAD; kept=()
+      while IFS=$'\t' read -r st p p2; do
+        case "$st" in D*) continue ;; R*|C*) p="$p2" ;; esac
+        kept+=("$p")
+      done < <(git -C "$wt" diff --name-status HEAD kit/main -- "$@" ':(exclude).kit-upstream')
+      [ ${#kept[@]} -gt 0 ] || { echo "nothing to apply for: $* (the kit has nothing there that this brain lacks or differs on)"; exit 0; }
+      set -- "${kept[@]}"
     else from=$BASE; fi
     patch=$(git -C "$wt" diff --binary "$from" kit/main -- "$@" ':(exclude).kit-upstream')
     [ -n "$patch" ] || { echo "nothing to apply for: $*"; exit 0; }

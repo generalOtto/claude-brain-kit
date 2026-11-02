@@ -26,7 +26,9 @@ run step 4 or 5 on your own initiative.
    those are protocol updates the user may want, merged three-way into their version.
    `base_source derived` → mention once that the base was inferred from the brain's first
    commit (the kit commit current when the template was used); `none` → the brain
-   predates the kit's history, so only kit-owned paths can be pulled (taken outright).
+   predates the kit's history, so only kit-owned paths can be pulled (taken outright);
+   files that exist only in this brain under those paths show as `yours` with `D` and
+   are never removed — don't offer them.
 3. **Ask.** Default offer: pull every `kit` path, and the `yours` paths too when the
    changes are protocol/convention text (not personal content). Honor "skip X", or
    "nothing" — a no still ends with step 5 so the daily line goes quiet.

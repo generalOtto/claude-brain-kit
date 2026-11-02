@@ -9,16 +9,24 @@ useDefault = true
 # for: backticked values in markdown tables and callouts. These rules cover that
 # shape, plus a few common self-hosting token formats.
 # Note: gitleaks uses Go RE2 — no lookaheads.
+#
+# Allowlist discipline: never `regexTarget = "line"` with a loose regex. A line-scoped
+# allowlist suppresses EVERY rule (stock ones included) on any line that merely contains
+# the phrase, so a real token sitting next to a pointer on the same line goes unflagged.
+# Per-rule allowlists target the match (label + value) and are anchored to the value they
+# exempt; "line" is used only where the exempting context precedes the match.
 
 [[rules]]
 id = "md-credential-label-value"
 description = "Token-like backticked value (8+ chars) right after a password/secret/api-key label"
 regex = '''(?i)(password|passphrase|api ?key|token secret|secret)[^`\n]{0,20}`[A-Za-z0-9_@:!#%^&+=$|.-]{8,}`'''
 [rules.allowlist]
-regexTarget = "line"
+regexTarget = "match"   # applied to the label+value match only — a second value on the same line is still checked
 regexes = [
+  '''`(password|changeme|REPLACE[_ -]?ME)`''',        # documented dummy / placeholder values
   '''`[A-Z][A-Z0-9_]{3,}`''',                         # ALL-CAPS env-var / placeholder names
   '''(?i)(password manager|bitwarden|1password|keepass|vaultwarden)\s+(item|entry|record)''',  # pointer phrasing: "→ password manager item `name`"
+  '''`[^`]*\.\.\.[^`]*`''',                           # elided value ("`sk-ant_..._abcd`") — never a whole secret
   '''`[A-Za-z0-9_.-]*\.(env|conf|md|py|json|yml|toml|gitignore|gitleaks)[a-z.]*`''',  # backticked filenames/dotfiles
   '''`brain-[a-z][a-z-]*`''',                          # backticked brain-* command names (brain-secret, brain-write.sh, ...), never secret material
 ]

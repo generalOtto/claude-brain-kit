@@ -31,8 +31,20 @@ installed from the marketplace moved on; the brain's copy stood still, and nothi
   created before this file existed gets the public kit URL by default and its base
   inferred from its first commit's date (the kit commit current when the template was
   used); a brain older than the kit has no base and can only take kit-owned paths
-  outright. `repo off` disables the check; a brain running its own fork of the plugin
-  points `repo` at that fork.
+  outright — and only the files the kit actually has there: a file that exists only in
+  that brain under `docs/` or `tools/` is listed `yours` and never removed. `repo off`
+  disables the check (the right setting for a brain the kit was extracted *from*); a
+  brain running its own fork of the plugin points `repo` at that fork.
+- **Bootloader and docs catch up with the hooks.** The template's `CLAUDE.md` now says
+  what the Stop hook has enforced since 1.2.0 — every day with brain writes gets a journal
+  entry — instead of "consider one"; its recall protocol gains context hygiene (bulk reads
+  in a subagent, `brain_edit`/`brain_append` over whole-file writes, shell output trimmed
+  at the source) and `brain_index` with `bootloader: false` from Claude Code; connector
+  surfaces are told to load a tool's schema before its first call. Three starter
+  conventions ship with it: `context-hygiene`, `evidence-before-claims`,
+  `persist-when-blocked`. The `md-credential-label-value` allowlist now targets the
+  match, not the line — a line-scoped allowlist exempted every rule on any line that
+  merely contained a pointer phrase, so a real token beside a pointer went unflagged.
 
 `tests/kit-update.test.sh` drives both against a sandbox kit (dated commits make the
 brain either younger or older than the kit): the one-time nudge, the cached probe, the

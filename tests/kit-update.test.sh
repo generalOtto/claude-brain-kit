@@ -131,15 +131,21 @@ t_teardown
 
 # ---- no base: brain predates the kit → kit-owned only, taken outright ----------------------
 t_setup; kit_setup 1.0.0 2030-01-01T00:00:00Z
+mkdir -p "$SB/brain/docs"; echo mine > "$SB/brain/docs/mine.md"   # this brain's own doc under a kit-owned path
+git -C "$SB/brain" add -A; git -C "$SB/brain" commit -qm "my doc"; git -C "$SB/brain" push -q origin main
 st=$(K status); assert_contains "$st" "base none" "no base"; assert_contains "$st" "base_source none" "source none"
 assert_contains "$st" "behind unknown" "behind unknown"; assert_contains "$st" "plugin_in_brain none" "no template copy in the brain"
 lg=$(K log); assert_contains "$lg" "no base" "log explains"; assert_contains "$lg" "brain: ship 1.0.0" "log shows latest kit commits"
 fl=$(K files); assert_contains "$fl" "# no base" "files explains"; assert_contains "$fl" "$(printf 'kit\tA\tdocs/a.md')" "kit-only file is A"
 assert_lacks "$fl" "INDEX.md" "no base: the brain's own notes are not listed as deleted"
+assert_contains "$fl" "$(printf 'yours\tD\tdocs/mine.md')" "no base: a brain-only file under a kit path is tagged yours"
 wt=$(W open)
 out=$(K apply "$wt" conventions/todo-list.md 2>&1); rc=$?; assert_rc "$rc" 1 "no base: refuses a user-owned path"; assert_contains "$out" "is yours" "refusal explains"
 out=$(K apply "$wt" docs plugins/); assert_contains "$out" "applied: A docs/a.md" "no base: kit-owned taken outright"
+assert_lacks "$out" "docs/mine.md" "no base: the brain's own file is not reported"
 assert_eq "$(cat "$wt/docs/a.md")" "doc v1" "kit content"
+assert_eq "$(cat "$wt/docs/mine.md")" "mine" "no base: the brain's own file under docs/ survives"
+out=$(K apply "$wt" docs/mine.md); assert_contains "$out" "nothing to apply" "no base: a brain-only path has nothing to take"
 t_teardown
 
 # ---- off → exit 3; bad worktree → exit 1 ---------------------------------------------------------
