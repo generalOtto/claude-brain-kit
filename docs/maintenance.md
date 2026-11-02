@@ -45,6 +45,19 @@ Ask Claude, in a session with the brain loaded:
 
 Review the commits; revert anything you disagree with. That's the whole ceremony.
 
+## Keeping the plugin current
+
+Claude Code updates a marketplace plugin on its own only when that marketplace's
+auto-update is on — and it is on by default only for the official marketplace. The
+`owner/repo` marketplace this plugin came from starts **off**, so a device stays on the
+version it installed until someone runs `claude plugin update brain@<marketplace>`.
+`/brain:setup` turns the flag on (`brain-plugin-autoupdate on` sets `"autoUpdate": true`
+on the marketplace's entry in `~/.claude/plugins/known_marketplaces.json` — the same field
+the `/plugin` → Marketplaces toggle writes), and the session-start line says
+`plugin auto-update is off …` on a device where it isn't. Updates then arrive in
+interactive sessions after your first message, with a random delay of up to ten minutes;
+a headless `claude -p` run (the keepalive) never triggers one, and a restart applies it.
+
 ## Pulling template updates
 
 Your brain is a *copy* of this kit ("Use this template" shares no git history), so kit
