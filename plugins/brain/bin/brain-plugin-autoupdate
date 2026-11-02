@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# brain-plugin-autoupdate — turn on Claude Code's auto-update for the marketplace this
+# plugin came from, so every device picks up new plugin versions by itself.
+#
+# Claude Code updates marketplace plugins on its own only when that marketplace's
+# auto-update is on, and it is on by default only for the official marketplace: an
+# owner/repo marketplace like this one starts OFF, and nothing says so. The flag is
+# "autoUpdate": true on the marketplace's entry in ~/.claude/plugins/known_marketplaces.json
+# — the same field the `/plugin` → Marketplaces toggle writes. Once on, updates land in
+# interactive sessions after the first message (random delay up to ten minutes; a headless
+# `claude -p` never triggers one) and a restart applies them.
+#
+#   brain-plugin-autoupdate status [marketplace]   prints on | off | not-registered; exit 0 | 1 | 2
+#   brain-plugin-autoupdate on     [marketplace]   sets the flag (python3 / python / py -3, else jq);
+#                                                   exit 0 when on (already or now), 2 when the file
+#                                                   can't be edited here — then toggle it by hand
+#
+# [marketplace] defaults to $BRAIN_MARKETPLACE, else the one this plugin was installed from, read
+# from this script's own path (<config>/plugins/cache/<marketplace>/<plugin>/<version>/bin/).
+# $CLAUDE_CONFIG_DIR overrides ~/.claude. The file is Claude Code's own: `status` reads it with awk
+# (pretty-printed JSON, one key per line, as Claude Code writes it — anything else reads as
+# not-registered, never as a false "off") and `on` rewrites it with a real JSON parser, touching
+# nothing but that one field.
+set -u
+me=brain-plugin-autoupdate
+die() { echo "$me: $1" >&2; exit "${2:-1}"; }
+CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/known_marketplaces.json"
+
+own_marketplace() {   # <config>/plugins/cache/<marketplace>/<plugin>/<version>/bin → <marketplace>
+  local here ver plug mkt cache
+  here=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P) || return 1
+  ver=${here%/bin}; [ "$ver" != "$here" ] || return 1
+  plug=${ver%/*}; mkt=${plug%/*}; cache=${mkt%/*}
+  if [ "${cache##*/}" != cache ] || [ "${cache%/*}" = "$cache" ] || [ "$(basename "${cache%/*}")" != plugins ]; then
+    return 1
+  fi
+  printf '%s\n' "${mkt##*/}"
+}
+
+flag_state() {   # on | off | not-registered
+  [ -f "$CFG" ] || { echo not-registered; return; }
+  awk -v key="\"$1\":" '
+    !blk && $1 == key { seen = 1; blk = 1; depth = 1; next }
+    blk {
+      if ($0 ~ /"autoUpdate"[[:space:]]*:[[:space:]]*true/) on = 1
+      depth += gsub(/{/, "{") - gsub(/}/, "}")      # a nested "source": { … } block must not end the entry
+      if (depth <= 0) blk = 0
+    }
+    END { print (seen ? (on ? "on" : "off") : "not-registered") }' "$CFG"
+}
+
+py_probe='import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)'
+py_set() {   # exit 0 = already on, 10 = set now, 3 = not registered
+  "$@" - "$CFG" "$MKT" <<'PY'
+import json, os, sys
+path, name = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as f:
+    data = json.load(f)
+if name not in data:
+    sys.exit(3)
+if data[name].get("autoUpdate") is True:
+    sys.exit(0)
+data[name]["autoUpdate"] = True
+tmp = path + ".tmp"
+with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+os.replace(tmp, path)
+sys.exit(10)
+PY
+}
+jq_set() {   # same exit codes; -b keeps a native Windows jq from writing CRLF (jq ≥ 1.7 only)
+  local tmp="$CFG.tmp.$$" jqb=""
+  jq -n -b '""' >/dev/null 2>&1 && jqb=-b
+  [ "$(jq -r --arg m "$MKT" 'has($m)' "$CFG" 2>/dev/null)" = true ] || return 3
+  [ "$(jq -r --arg m "$MKT" '.[$m].autoUpdate == true' "$CFG")" = true ] && return 0
+  if jq ${jqb:+"$jqb"} --arg m "$MKT" '.[$m].autoUpdate = true' "$CFG" > "$tmp" && mv "$tmp" "$CFG"; then return 10; fi
+  rm -f "$tmp"; return 2
+}
+set_flag() {   # on Windows, python3/python on PATH can be the Store alias that only prints "Python was not found"
+  if python3 -c "$py_probe" >/dev/null 2>&1; then py_set python3
+  elif python -c "$py_probe" >/dev/null 2>&1; then py_set python
+  elif py -3 -c "$py_probe" >/dev/null 2>&1; then py_set py -3
+  elif command -v jq >/dev/null 2>&1; then jq_set
+  else return 2; fi
+}
+
+cmd=${1:-}; MKT=${2:-${BRAIN_MARKETPLACE:-}}
+[ -n "$MKT" ] || MKT=$(own_marketplace) || die "cannot tell which marketplace this plugin came from (not running from <config>/plugins/cache/) — pass it: $me ${cmd:-status} <marketplace>"
+case "$cmd" in
+  status)
+    s=$(flag_state "$MKT"); echo "$s"
+    case "$s" in on) exit 0 ;; off) exit 1 ;; *) exit 2 ;; esac ;;
+  on)
+    [ -f "$CFG" ] || die "$CFG not found — is the plugin installed from a marketplace on this machine?" 2
+    set_flag; rc=$?
+    case $rc in
+      0)  echo "on (already) — plugins from '$MKT' auto-update on this machine" ;;
+      10) echo "on (set now) — plugins from '$MKT' auto-update from the next interactive session; a restart applies each update" ;;
+      3)  die "marketplace '$MKT' is not registered in $CFG" 2 ;;
+      *)  die "no python3/python/py or jq here to edit $CFG — turn it on by hand: /plugin → Marketplaces → $MKT → Enable auto-update" 2 ;;
+    esac ;;
+  *) echo "usage: $me status|on [marketplace]" >&2; exit 1 ;;
+esac

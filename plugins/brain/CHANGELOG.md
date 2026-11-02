@@ -1,5 +1,30 @@
 # brain plugin — changelog
 
+## 1.4.1 — 2026-11-03
+Shipping 1.4.0 raised the obvious question: will the devices pick it up by themselves? No.
+Claude Code self-updates a plugin only when its marketplace's auto-update is on, and an
+`owner/repo` marketplace — this one, for every brain — starts off; nothing said so, and
+`claude plugin update` is a per-device, per-plugin chore. (The template-update check from
+1.4.0 is a different thing: it watches the kit *repo* for protocol changes, and a brain the
+kit was extracted from keeps it `repo off`.)
+- **`brain-plugin-autoupdate`** (new, on PATH): `status` reads the marketplace's entry in
+  `~/.claude/plugins/known_marketplaces.json` (`on` / `off` / `not-registered`); `on` sets
+  `"autoUpdate": true` there — the same field the `/plugin` → Marketplaces toggle writes —
+  through python or jq, touching nothing else in the file, and exits 2 with the manual
+  toggle when neither is available. The marketplace defaults to the one this plugin was
+  installed from, read from the script's own path under `plugins/cache/`.
+- **`/brain:setup`** step 9 runs it, so a freshly bootstrapped device gets updates from its
+  first session on. The **session-start line** adds `plugin auto-update is off for this
+  marketplace: run /brain:setup` on a device where it isn't — silent when the marketplace
+  can't be told (a dev checkout) or the entry isn't there.
+- `docs/maintenance.md` § Keeping the plugin current says when updates actually land:
+  interactive sessions after the first message, random delay up to ten minutes; a headless
+  `claude -p` (the keepalive) never triggers one.
+
+`tests/brain-plugin-autoupdate.test.sh`: no marketplace deducible, not registered, off behind
+a nested `source` block, `on` changes only that entry and leaves valid JSON, idempotent, and
+the hook nudges when off and stays silent when on or unknown.
+
 ## 1.4.0 — 2026-11-02
 A brain is a copy of the kit made with "Use this template", so nothing the kit learned
 after that day ever reached it: not the protocol fixes in `CLAUDE.md` and `conventions/`,

@@ -6,8 +6,8 @@
     {
       "name": "brain",
       "source": "./plugins/brain",
-      "description": "Session-start auto-pull of your brain clone, a Stop-hook journal guard, concurrency-safe writes (brain-write.sh), zero-friction secrets + login keepalive, a daily template-update check, and the /brain:setup, /brain:update, /brain:todos, /brain:idea, write and profile skills.",
-      "version": "1.4.0",
+      "description": "Session-start auto-pull of your brain clone, a Stop-hook journal guard, concurrency-safe writes (brain-write.sh), zero-friction secrets + login keepalive, plugin auto-update, a daily template-update check, and the /brain:setup, /brain:update, /brain:todos, /brain:idea, write and profile skills.",
+      "version": "1.4.1",
       "category": "productivity"
     },
     {

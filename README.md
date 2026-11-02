@@ -35,7 +35,8 @@ own brain.
   zero-friction idea capture ("idea: …" → filed in one line), and an evidence-based
   profile that grows as you work — with a veto announcement on every capture.
 - 🔌 **A Claude Code plugin** — session-start auto-sync, concurrency-safe writes,
-  `/brain:todos` & `/brain:idea`, versioned with `claude plugin update` — and a daily
+  `/brain:todos` & `/brain:idea`, kept current by Claude Code's plugin auto-update
+  (`/brain:setup` switches it on for this marketplace) — and a daily
   check of this template, so kit improvements reach *your* copy too (`/brain:update`
   reviews and pulls them; your personalized files merge, never get overwritten).
 - 🔐 **A real secrets policy** — the brain stores *pointers* to credentials, never

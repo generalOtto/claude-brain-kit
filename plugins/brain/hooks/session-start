@@ -148,6 +148,12 @@ check_wired "$BRAIN" >/dev/null || suffix="$suffix | not wired: run /brain:setup
 days=$(sed -n 's/.*"cleanupPeriodDays"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$HOME/.claude/settings.json" 2>/dev/null | head -1)
 days=${days:-30}
 [ "$days" -lt 3650 ] && suffix="$suffix | transcripts expire in ${days}d: run /brain:setup"
+# Claude Code self-updates plugins only from a marketplace whose auto-update is on, and an owner/repo
+# marketplace starts off. brain-plugin-autoupdate reads the flag for the marketplace this plugin came
+# from; silent unless it positively reads "off" (a dev checkout or an unknown entry says nothing).
+case "$("$(dirname "${BASH_SOURCE[0]}")/../bin/brain-plugin-autoupdate" status 2>/dev/null)" in
+  off) suffix="$suffix | plugin auto-update is off for this marketplace: run /brain:setup" ;;
+esac
 
 # ---- profile consolidation nudge --------------------------------------------
 # Trigger: first session of any day on which identity/profile.md's Evidence log

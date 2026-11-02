@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Wire this machine to the brain — import stub in ~/.claude/CLAUDE.md, transcript retention, optional gitleaks pre-commit hook, template placeholders. Run once per machine after installing the brain plugin; safe to re-run.
+description: Wire this machine to the brain — import stub in ~/.claude/CLAUDE.md, transcript retention, keepalive, plugin auto-update, optional gitleaks pre-commit hook, template placeholders. Run once per machine after installing the brain plugin; safe to re-run.
 disable-model-invocation: true
 allowed-tools: Bash, Read, Edit, Write
 ---
@@ -52,9 +52,17 @@ delete files or notes, touch only the settings.json keys named below, and never 
    `claude -p 'Reply with the single word OK.' --output-format text < /dev/null`; if
    it does not report
    OK (expired token, error, etc.), tell the human to run `claude login` once.
-9. **Secrets (optional).** If `bws` is installed and the token file
+9. **Plugin auto-update.** Run `brain-plugin-autoupdate on`. Claude Code updates
+   marketplace plugins by itself only when that marketplace's auto-update is on, and an
+   `owner/repo` marketplace like this one starts off — without this step every device
+   stays on whatever version it installed. Exit 0 → `✓ done` (`· already fine` when the
+   output says "already"); exit 2 → relay its message: no python/jq to edit the file, so
+   show the manual toggle (`/plugin` → Marketplaces → the brain's marketplace → Enable
+   auto-update). Updates then land in interactive sessions after the first message and
+   apply on restart; `claude plugin update brain@<marketplace>` still works any time.
+10. **Secrets (optional).** If `bws` is installed and the token file
    (`${BRAIN_SECRETS_TOKEN_FILE:-~/.config/claude-brain/bws-token}`) exists, run
    `brain-secret list` to confirm it works. Otherwise mention `docs/zero-friction.md`
    § secrets as an optional step — not required for the brain to work.
-10. **Finish.** Summarize the report and tell the user to start a new session: the
+11. **Finish.** Summarize the report and tell the user to start a new session: the
     bootloader loads, and on a brand-new brain Claude offers the first-run interview.
