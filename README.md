@@ -35,7 +35,9 @@ own brain.
   zero-friction idea capture ("idea: …" → filed in one line), and an evidence-based
   profile that grows as you work — with a veto announcement on every capture.
 - 🔌 **A Claude Code plugin** — session-start auto-sync, concurrency-safe writes,
-  `/brain:todos` & `/brain:idea`, versioned with `claude plugin update`.
+  `/brain:todos` & `/brain:idea`, versioned with `claude plugin update` — and a daily
+  check of this template, so kit improvements reach *your* copy too (`/brain:update`
+  reviews and pulls them; your personalized files merge, never get overwritten).
 - 🔐 **A real secrets policy** — the brain stores *pointers* to credentials, never
   values, enforced three ways (gitignore, optional pre-commit hook, gitleaks CI) —
   including custom rules for the markdown-shaped leaks stock scanners miss.
@@ -106,6 +108,7 @@ tests/         the plugin's test suite
 TODO.md        the single to-do list — surfaced as a daily digest, opened with "todos"
 INDEX.md       the catalog recall runs on
 CLAUDE.md      the bootloader (protocols + who you are)
+.kit-upstream  which template this brain came from + the kit commit last reviewed (the daily update check)
 ```
 
 Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
@@ -118,7 +121,7 @@ Deep dive: [docs/how-it-works.md](docs/how-it-works.md)
 | [Voice mode](docs/voice.md) | Your own free MCP server (one command, Cloudflare Workers) — full recall in voice mode, which the GitHub connector can't do, plus atomic guarded writes from every connector surface |
 | [One-sentence onboarding](docs/bootstrap.md) | Add any new device by saying one sentence — Claude reads the setup instructions *from the brain itself* and self-onboards (connector-only "satellite" tier, or full clone via a repo-scoped deploy key) |
 | [More surfaces](docs/more-surfaces.md) | Second machine; Claude Code web; cloud sessions |
-| [Maintenance](docs/maintenance.md) | The habits + a monthly consolidation prompt that keep the brain trustworthy |
+| [Maintenance](docs/maintenance.md) | The habits + a monthly consolidation prompt that keep the brain trustworthy, and how template updates reach your brain (`/brain:update`) |
 | [Security](docs/security.md) | Why private, the pointers-not-secrets policy, and the three enforcement layers |
 | [Zero-friction operations](docs/zero-friction.md) | Fetch secrets instead of asking for them, keep the `claude` login alive, and the other standing decisions that keep Claude from needing you for things it can just do |
 

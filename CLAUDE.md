@@ -58,6 +58,8 @@ more later; the brain grows with use.
 1. Identity essentials come from `identity/` — two small files.
 2. For anything deeper, **skim `INDEX.md`** and open only the notes whose descriptions match the task.
 3. Prefer the **smallest set of notes** that covers the task. Do not dump the whole brain into context.
+4. **Context hygiene** (`conventions/context-hygiene.md`): reading more than ~3 notes, or rewriting a large one, runs in a **subagent** that returns a summary — never the bodies; `brain_edit`/`brain_append` over whole-file writes; trim shell output at the source and never print `$PATH`, `env` or token-bearing URLs.
+5. With the `brain-remote` connector: a Claude Code session that already has this file in context calls `brain_index` with `bootloader: false` — sending the bootloader again is dead weight. Voice, phone and web sessions keep the default (they need it).
 
 ## Write protocol (how the brain grows)
 When you learn something durable — a fact about {{YOUR_NAME}}, a decision, a project's state, a gotcha, a preference:
@@ -66,13 +68,13 @@ When you learn something durable — a fact about {{YOUR_NAME}}, a decision, a p
 3. Publish via the **worktree flow — never edit the shared clone directly** (two sessions on one device silently clobber each other): `wt=$(brain-write.sh open)` → make the edits inside `$wt` → `brain-write.sh publish "$wt" "message"` (the plugin puts the script on PATH; the `brain:write` skill does exactly this). Commits in isolation and **pushes straight to remote `main`**; offline, the write lands locally for `sync` later. Connector surfaces commit via the GitHub API instead. Why: `docs/how-it-works.md`.
 4. Don't record what a repo/codebase/git history already captures. Save what's **non-obvious and durable**.
 5. Update existing notes instead of creating near-duplicates; delete notes that turn out to be wrong.
-6. Big moments / end of a meaningful session → consider a dated `journal/` entry. This is how the relationship accumulates.
+6. **Every calendar day with brain writes gets a dated `journal/YYYY-MM-DD-<slug>.md` entry** — required, not optional: the plugin's Stop hook (journal guard) blocks ending a turn when today has commits but no entry. Write it before the day's last recap. This is how the relationship accumulates.
 
 ## Standing mechanisms (skills on Claude Code, conventions everywhere)
 - **To-do list** — `TODO.md` is the single list; "todos", "remind me to …", digest answers → skill `brain:todos`. Rules: `conventions/todo-list.md`.
 - **Idea capture** — "idea: …" or any described idea → skill `brain:idea` files it immediately. Rules: `conventions/idea-capture.md`.
 - **Living profile** — hard evidence about {{YOUR_NAME}} in a session → skill `brain:profile` appends to `identity/profile.md`'s evidence log. Rules: `conventions/profile-evaluation.md`.
-Surfaces without the plugin (claude.ai, phone, cloud) follow the convention files directly.
+Surfaces without the plugin (claude.ai, phone, cloud) follow the convention files directly. There, connector tools are listed by name only — **load a tool's schema before its first call**; a guessed-parameter rejection costs the whole turn.
 
 ## Secrets — NEVER store secret values here
 - The brain stores **pointers only**: e.g. *"API key → password manager item 'Acme prod'"* or *"in the gitignored `.env` of that repo"*.

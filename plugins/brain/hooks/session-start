@@ -169,5 +169,40 @@ if [ -f "$PROFILE" ]; then
   fi
 fi
 
+# ---- kit update check (daily) -----------------------------------------------
+# Once a calendar day, probe the template repo's main with ls-remote — one round trip,
+# no fetch, nothing written to the clone — and compare it with the kit commit this brain
+# was last reviewed at (`reviewed` in .kit-upstream, written by /brain:update). A brain
+# that never ran /brain:update is compared with the first kit commit this device saw,
+# so the line fires on the kit's next change. Skipped offline (the origin fetch failed)
+# and when .kit-upstream says `repo off`; $BRAIN_KIT_REPO overrides the URL (tests).
+kit_field()   { [ -f "$BRAIN/.kit-upstream" ] && awk -v k="$1" '$1==k {print $2; exit}' "$BRAIN/.kit-upstream"; }
+kit_url=${BRAIN_KIT_REPO:-$(kit_field repo)}; kit_url=${kit_url:-https://github.com/generalOtto/claude-brain-kit.git}
+stamp="$HOME/.config/claude-brain/kit-update-check"   # the day's probe + this device's baseline; never synced
+stamp_field() { [ -f "$stamp" ] && awk -v k="$1" '$1==k {print $2; exit}' "$stamp"; }
+write_stamp() { mkdir -p "${stamp%/*}" && printf 'probe_date %s\nprobe_sha %s\nbaseline %s\n' "$probe_date" "$probe_sha" "$baseline" > "$stamp"; }
+kit_probe() {                      # prints the kit's main sha, or nothing
+  export GCM_INTERACTIVE=never     # no credential-manager dialog if the URL ever needs auth
+  if [ -n "$TIMEOUT_BIN" ]; then "$TIMEOUT_BIN" -k 2 10 git ls-remote -q "$kit_url" refs/heads/main
+  else git ls-remote -q "$kit_url" refs/heads/main; fi 2>/dev/null | awk '{print $1; exit}'
+}
+case "$kit_url" in off|none) ;; *)
+  today=$(date +%Y-%m-%d)
+  probe_date=$(stamp_field probe_date); probe_sha=$(stamp_field probe_sha); baseline=$(stamp_field baseline)
+  if [ "$probe_date" != "$today" ] && $fetch_ok; then
+    sha=$(kit_probe)
+    if [ -n "$sha" ]; then probe_date=$today; probe_sha=$sha; write_stamp; fi
+  fi
+  if [ -n "$probe_sha" ]; then
+    base=$(kit_field reviewed); base=${base:-$baseline}
+    if [ -z "$base" ]; then
+      baseline=$probe_sha; write_stamp
+      suffix="$suffix | kit: template update check is on — run /brain:update once to see whether the template moved since this brain was made"
+    elif [ "$probe_sha" != "$base" ]; then
+      suffix="$suffix | kit: template updates available (${probe_sha:0:7}) — offer /brain:update to review and pull them"
+    fi
+  fi
+;; esac
+
 echo "brain: ${status}${suffix}"
 exit 0

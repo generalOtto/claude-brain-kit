@@ -28,6 +28,9 @@ category, not per idea).
 - [Profile evaluation](conventions/profile-evaluation.md) — the living-profile mechanism: evidence rules, capture loop with "profiled →" announce, daily consolidation pass (first session of a day with unconsolidated entries)
 - [Standing decisions](conventions/standing-decisions.md) — pre-decided operational calls (merge, push, tag, deploy, scratch resources, brainstorm defaults, secrets, devices) so Claude doesn't ask
 - [Access & secrets — least friction, no surface gating](conventions/access-and-secrets.md) — Every surface gets the same access; add connectors once on claude.ai; official OAuth connectors before raw keys, keys before asking
+- [Context hygiene](conventions/context-hygiene.md) — Keep tool output out of the session: bulk reads/rewrites in a subagent, targeted edits over whole-file writes, shell output trimmed at the source
+- [Evidence before claims](conventions/evidence-before-claims.md) — Verify against the actual source before stating a claim; quote over paraphrase; check state before retrying a write
+- [Persist when blocked](conventions/persist-when-blocked.md) — On a denied tool or permission, try 2–3 different routes before reporting blocked, and leave a trace of the blocker
 
 ## ideas/ — idea seeds by category (one INDEX line per category by design)
 - [ideas/apps/](ideas/apps/) — app ideas (starter example inside — replace with yours; add categories as they earn their place)

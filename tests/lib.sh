@@ -27,6 +27,7 @@ t_setup() {
   git -C "$SB/brain" push --quiet -u origin main || { echo "t_setup: push -u failed" >&2; return 1; }
   git -c init.defaultBranch=main clone --quiet "$SB/origin.git" "$SB/other" 2>/dev/null || { echo "t_setup: clone other failed" >&2; return 1; }
   export BRAIN_DIR="$SB/brain"
+  export BRAIN_KIT_REPO=off          # no real-network kit probe in tests; kit-update.test.sh points it at a sandbox kit
   unset CLAUDE_PLUGIN_OPTION_BRAIN_DIR
   trap 't_teardown' EXIT
 }

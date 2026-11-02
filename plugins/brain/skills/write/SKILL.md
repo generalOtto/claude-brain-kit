@@ -20,4 +20,5 @@ Clone: run `"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" --resolve` to get the pa
    re-run publish.
 4. Reply in one line with what was written and where.
 
-Notable session → consider a dated `journal/YYYY-MM-DD-<slug>.md` entry the same way.
+Every calendar day with brain writes needs a dated `journal/YYYY-MM-DD-<slug>.md` entry,
+written the same way — the Stop hook (journal guard) blocks the day's last stop without one.

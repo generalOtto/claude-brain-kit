@@ -1,5 +1,57 @@
 # brain plugin — changelog
 
+## 1.4.0 — 2026-11-02
+A brain is a copy of the kit made with "Use this template", so nothing the kit learned
+after that day ever reached it: not the protocol fixes in `CLAUDE.md` and `conventions/`,
+not the docs a new device reads to onboard itself, not the plugin's own tests. The plugin
+installed from the marketplace moved on; the brain's copy stood still, and nothing said so.
+- **Daily update check.** Once a calendar day the session-start hook asks the template
+  repo for its `main` commit (`git ls-remote`: one round trip, no fetch, nothing written
+  to the clone) and compares it with the kit commit this brain was last reviewed at. When
+  the template moved, the status line ends with `kit: template updates available (<sha>)
+  — offer /brain:update to review and pull them`, and Claude asks before touching
+  anything. The day's answer is cached in `~/.config/claude-brain/kit-update-check`;
+  offline sessions skip the probe. The first session on a device says once that the check
+  is on. Brains that never ran `/brain:update` are compared with the first kit commit the
+  device saw, so the line fires on the kit's next change.
+- **`/brain:update`** (new skill) shows what changed — the kit commits and the CHANGELOG
+  entries since the base, every path tagged `kit` (plugin source, tests, docs, CI: taken
+  over) or `yours` (bootloader, conventions, notes: merged three-way into your version) —
+  and pulls what you agree to through the worktree flow, one commit on `main`. It then
+  runs `claude plugin update brain@claude-brain-kit` when the installed plugin is behind.
+  A "no" still records the review, so the daily line goes quiet.
+- **`brain-kit-update`** (new, on PATH) does the mechanics: `status`, `log`, `files`,
+  `apply <wt> <paths…>`, `mark <wt>`. The kit is fetched as the `kit` remote of the brain
+  clone; `apply` pipes `git diff base..kit/main -- <paths>` into `git apply --3way`, so a
+  file you also edited merges, and a real collision leaves conflict markers plus an
+  unmerged index entry — `apply` exits 1 and names the file, so markers never get
+  committed by `brain-write.sh publish`.
+- **`.kit-upstream`** (new, repo root) records the template URL and the kit commit last
+  reviewed — versioned, so one device's review silences every device's line. A brain
+  created before this file existed gets the public kit URL by default and its base
+  inferred from its first commit's date (the kit commit current when the template was
+  used); a brain older than the kit has no base and can only take kit-owned paths
+  outright — and only the files the kit actually has there: a file that exists only in
+  that brain under `docs/` or `tools/` is listed `yours` and never removed. `repo off`
+  disables the check (the right setting for a brain the kit was extracted *from*); a
+  brain running its own fork of the plugin points `repo` at that fork.
+- **Bootloader and docs catch up with the hooks.** The template's `CLAUDE.md` now says
+  what the Stop hook has enforced since 1.2.0 — every day with brain writes gets a journal
+  entry — instead of "consider one"; its recall protocol gains context hygiene (bulk reads
+  in a subagent, `brain_edit`/`brain_append` over whole-file writes, shell output trimmed
+  at the source) and `brain_index` with `bootloader: false` from Claude Code; connector
+  surfaces are told to load a tool's schema before its first call. Three starter
+  conventions ship with it: `context-hygiene`, `evidence-before-claims`,
+  `persist-when-blocked`. The `md-credential-label-value` allowlist now targets the
+  match, not the line — a line-scoped allowlist exempted every rule on any line that
+  merely contained a pointer phrase, so a real token beside a pointer went unflagged.
+
+`tests/kit-update.test.sh` drives both against a sandbox kit (dated commits make the
+brain either younger or older than the kit): the one-time nudge, the cached probe, the
+alert that persists until reviewed, a recorded review silencing the hook, off/offline/
+unreachable staying silent, the derived base, a three-way merge of a personalized
+convention, a real conflict, and the no-base path.
+
 ## 1.3.6 — 2026-10-20
 The macOS keepalive had the same flaw 1.3.5 fixed on Linux. Its LaunchAgent set no
 PATH, so the keepalive script ran with launchd's default `/usr/bin:/bin:/usr/sbin:/sbin`,
