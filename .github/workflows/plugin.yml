@@ -1,11 +1,11 @@
-# Validates the Claude Code plugins and runs their bash tests.
-# Path-scoped, so brains built from this template only run it when they touch the plugins.
+# Validates the Claude Code plugins and runs the bash tests (the plugins' and setup.sh's).
+# Path-scoped, so brains built from this template only run it when they touch those.
 name: plugin
 on:
   push:
-    paths: ["plugins/**", ".claude-plugin/**", "tests/**", ".github/workflows/plugin.yml"]
+    paths: ["plugins/**", ".claude-plugin/**", "tests/**", "tools/brain-remote/setup.sh", ".github/workflows/plugin.yml"]
   pull_request:
-    paths: ["plugins/**", ".claude-plugin/**", "tests/**", ".github/workflows/plugin.yml"]
+    paths: ["plugins/**", ".claude-plugin/**", "tests/**", "tools/brain-remote/setup.sh", ".github/workflows/plugin.yml"]
 jobs:
   validate-and-test:
     runs-on: ubuntu-latest
@@ -20,7 +20,7 @@ jobs:
           test -x plugins/brain/bin/brain-secret
           test -x plugins/brain/bin/brain-keepalive-install
           command -v shellcheck >/dev/null || { sudo apt-get update -q && sudo apt-get install -y -q shellcheck; }
-          shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/hooks/journal-guard plugins/brain/bin/brain-write.sh plugins/brain/bin/brain-secret plugins/brain/bin/brain-keepalive-install tests/lib.sh tests/session-start.test.sh tests/profile-trigger.test.sh tests/journal-guard.test.sh tests/brain-write.test.sh tests/brain-secret.test.sh tests/brain-keepalive-install.test.sh tests/run.sh
+          shellcheck -S warning plugins/brain/hooks/session-start plugins/brain/hooks/journal-guard plugins/brain/bin/brain-write.sh plugins/brain/bin/brain-secret plugins/brain/bin/brain-keepalive-install tests/lib.sh tests/session-start.test.sh tests/profile-trigger.test.sh tests/journal-guard.test.sh tests/brain-write.test.sh tests/brain-secret.test.sh tests/brain-keepalive-install.test.sh tests/brain-remote-setup.test.sh tests/run.sh
       - name: Bash tests
         run: |
           # brain-secret's jq fallback tests skip themselves where jq is missing

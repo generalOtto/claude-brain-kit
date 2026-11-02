@@ -21,6 +21,11 @@
 # Lessons baked in: verify-then-store for every secret, diagnose paste
 # failures by length/shape (never by value), and no hand-copying of long
 # strings out of UI fields.
+
+# Never trace. Under xtrace — `bash -x setup.sh`, or one inherited through an
+# exported SHELLOPTS — bash would print the Wrangler OAuth token and the pasted
+# GitHub PAT. Keep this the first command, so nothing here can ever run traced.
+set +x
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
