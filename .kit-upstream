@@ -1,0 +1,6 @@
+# The claude-brain-kit template this brain was generated from. The brain plugin's
+# session-start hook probes it once a day and says when the template has new commits;
+# /brain:update reviews and pulls them, then records the kit commit it reviewed here.
+#   repo <url>       where the template lives (`repo off` disables the check)
+#   reviewed <sha>   last kit commit reviewed by /brain:update (absent = never)
+repo https://github.com/generalOtto/claude-brain-kit.git

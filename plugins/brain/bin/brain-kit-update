@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# brain-kit-update — pull template updates from claude-brain-kit into this brain
+# (shipped by the brain plugin, on PATH; the /brain:update skill drives it).
+#
+# A brain is generated from the kit with "Use this template", so it shares no git
+# history with it. This script bridges that gap: the kit is fetched as the `kit`
+# remote of the brain clone; the BASE is the kit commit this brain was last reviewed
+# against (`reviewed` in .kit-upstream — or, before /brain:update ever ran, the kit
+# commit current when the brain's first commit was made); updates are applied as a
+# three-way patch of base..kit/main into a brain-write.sh worktree, so files you
+# personalized merge instead of being overwritten.
+#
+# Usage:
+#   brain-kit-update status              fetch the kit; print `key value` lines (base, head, behind, versions)
+#   brain-kit-update log                 commits and CHANGELOG entries since the base
+#   brain-kit-update files               paths changed since the base, tagged `kit` (kit-owned) or `yours`
+#   brain-kit-update apply <wt> <path>…  3-way apply the base..kit/main diff for those paths into a worktree
+#   brain-kit-update mark <wt>           record kit/main as reviewed in <wt>/.kit-upstream
+#
+# Kit URL: $BRAIN_KIT_REPO → `repo <url>` in <brain>/.kit-upstream → the public kit.
+# `repo off` disables the update check everywhere (this script exits 3).
+#
+# Brain clone resolution (shared with hooks/session-start — keep identical):
+#  $BRAIN_DIR → $CLAUDE_PLUGIN_OPTION_BRAIN_DIR → pluginConfigs["brain@claude-brain-kit"] brain_dir in
+#  ~/.claude/settings.json → ~/claude-brain (if a git repo) → error.
+#  (two-space indent on purpose: the usage printer only echoes `#   ` lines)
+set -euo pipefail
+
+normpath() {
+  local p="$1"
+  # shellcheck disable=SC2088  # matching a literal leading tilde is the point
+  case "$p" in "~") p="$HOME" ;; "~/"*) p="$HOME/${p#\~/}" ;; esac
+  if command -v cygpath >/dev/null 2>&1; then p=$(cygpath -u "$p" 2>/dev/null || printf '%s' "$p"); else p=${p//\\//}; fi
+  printf '%s' "${p%/}"
+}
+resolve_brain() {
+  local d="${BRAIN_DIR:-${CLAUDE_PLUGIN_OPTION_BRAIN_DIR:-}}" s="$HOME/.claude/settings.json"
+  if [ -z "$d" ] && [ -f "$s" ]; then
+    d=$(sed -n '/"brain@claude-brain-kit"/,/^[[:space:]]*}/ s/.*"brain_dir"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$s" | head -1 || true); d=${d//\\\\/\\}
+  fi
+  if [ -z "$d" ] && git -C "$HOME/claude-brain" rev-parse --git-dir >/dev/null 2>&1; then d="$HOME/claude-brain"; fi
+  [ -n "$d" ] || return 1
+  normpath "$d"
+}
+die() { echo "brain-kit-update: $*" >&2; exit 1; }
+BRAIN=$(resolve_brain) || die "no brain clone found (looked at BRAIN_DIR, the plugin's brain_dir option, settings.json pluginConfigs, ~/claude-brain)"
+git -C "$BRAIN" rev-parse --git-dir >/dev/null 2>&1 || die "$BRAIN is not a git repo"
+
+DEFAULT_KIT=https://github.com/generalOtto/claude-brain-kit.git
+UPSTREAM="$BRAIN/.kit-upstream"
+# Paths the kit owns outright (plugin source, tests, docs, CI). Everything else — the
+# bootloader, conventions, identity, notes — is yours and only ever merges three-way.
+KIT_OWNED='plugins/ tests/ tools/ docs/ .github/ .claude-plugin/ .gitleaks.toml .gitignore README.md LICENSE'
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"     # bin/ lives inside the installed plugin
+
+kit_field() { [ -f "$UPSTREAM" ] && awk -v k="$1" '$1==k {print $2; exit}' "$UPSTREAM" || true; }
+KIT_URL=${BRAIN_KIT_REPO:-$(kit_field repo)}; KIT_URL=${KIT_URL:-$DEFAULT_KIT}
+case "$KIT_URL" in off|none) echo "brain-kit-update: the update check is off (\`repo off\` in .kit-upstream)" >&2; exit 3 ;; esac
+
+json_version() { sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1; }
+file_version() { [ -f "$1" ] && json_version < "$1" || true; }
+short() { printf '%s' "${1:0:7}"; }
+tag_path() { local p="$1" k; for k in $KIT_OWNED; do case "$p" in "$k"*|"${k%/}") echo kit; return;; esac; done; echo yours; }
+
+fetch_kit() {
+  if [ "$(git -C "$BRAIN" remote get-url kit 2>/dev/null || true)" != "$KIT_URL" ]; then
+    git -C "$BRAIN" remote remove kit 2>/dev/null || true
+    git -C "$BRAIN" remote add --no-tags kit "$KIT_URL"
+  fi
+  export GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=never
+  git -C "$BRAIN" fetch --quiet kit main 2>/dev/null || die "cannot fetch $KIT_URL (offline, or the kit moved — fix \`repo\` in .kit-upstream)"
+  HEAD_KIT=$(git -C "$BRAIN" rev-parse kit/main)
+}
+# BASE / BASE_SRC: recorded (.kit-upstream `reviewed`) → derived (kit commit current at the
+# brain's first commit, i.e. the template it was generated from) → none (brain predates the kit)
+find_base() {
+  BASE=$(kit_field reviewed)
+  if [ -n "$BASE" ] && git -C "$BRAIN" cat-file -e "$BASE^{commit}" 2>/dev/null; then BASE_SRC=recorded; return; fi
+  local root root_date
+  root=$(git -C "$BRAIN" rev-list --max-parents=0 HEAD | tail -1)
+  root_date=$(git -C "$BRAIN" log -1 --format=%cI "$root")
+  BASE=$(git -C "$BRAIN" rev-list -1 --until="$root_date" kit/main)
+  if [ -n "$BASE" ]; then BASE_SRC=derived; else BASE_SRC=none; fi
+}
+kit_file_version() { git -C "$BRAIN" show "kit/main:$1" 2>/dev/null | json_version || true; }
+
+case "${1:-}" in
+  status)
+    fetch_kit; find_base
+    echo "url $KIT_URL"
+    echo "base ${BASE:-none}"
+    echo "base_source $BASE_SRC"
+    echo "head $HEAD_KIT"
+    if [ -n "$BASE" ]; then echo "behind $(git -C "$BRAIN" rev-list --count "$BASE..kit/main")"; else echo "behind unknown"; fi
+    v=$(file_version "$PLUGIN_ROOT/.claude-plugin/plugin.json"); echo "plugin_installed ${v:-unknown}"
+    v=$(kit_file_version plugins/brain/.claude-plugin/plugin.json); echo "plugin_kit ${v:-unknown}"
+    v=$(file_version "$BRAIN/plugins/brain/.claude-plugin/plugin.json"); echo "plugin_in_brain ${v:-none}"
+    ;;
+  log)
+    fetch_kit; find_base
+    if [ "$BASE_SRC" = none ]; then
+      echo "## no base — this brain predates the kit's history; the latest 20 kit commits:"
+      git -C "$BRAIN" log -20 --format='%h %ad %s' --date=short kit/main
+      exit 0
+    fi
+    echo "## kit commits since $(short "$BASE") ($BASE_SRC base)"
+    git -C "$BRAIN" log --format='%h %ad %s' --date=short "$BASE..kit/main"
+    echo
+    echo "## CHANGELOG entries added since then"
+    git -C "$BRAIN" diff "$BASE" kit/main -- plugins/brain/CHANGELOG.md | { grep '^+[^+]' || true; } | sed 's/^+//'
+    ;;
+  files)
+    fetch_kit; find_base
+    if [ "$BASE_SRC" = none ]; then
+      echo "# no base: comparing your current kit-owned files with the kit's (A = only in the kit, D = only here)"
+      # shellcheck disable=SC2206  # KIT_OWNED is a deliberate word list
+      diff_args=(HEAD kit/main -- $KIT_OWNED)
+    else diff_args=("$BASE" kit/main); fi
+    git -C "$BRAIN" diff --name-status "${diff_args[@]}" ':(exclude).kit-upstream' |
+    while IFS=$'\t' read -r st p p2; do
+      case "$st" in R*|C*) p="$p2" ;; esac
+      printf '%s\t%s\t%s\n' "$(tag_path "$p")" "${st:0:1}" "$p"
+    done
+    ;;
+  apply)
+    wt=${2:?usage: brain-kit-update apply <worktree-path> <path>...}
+    shift 2; [ $# -gt 0 ] || die "apply: name at least one path (see 'brain-kit-update files')"
+    git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not a worktree: $wt (use brain-write.sh open)"
+    fetch_kit; find_base
+    if [ "$BASE_SRC" = none ]; then
+      # no common base to merge from: taking the kit's version outright is only safe for kit-owned paths
+      for p in "$@"; do [ "$(tag_path "$p")" = kit ] || die "no base: '$p' is yours — with nothing to merge from it would be overwritten; port the kit's change by hand (git -C '$BRAIN' show kit/main:$p)"; done
+      from=HEAD
+    else from=$BASE; fi
+    patch=$(git -C "$wt" diff --binary "$from" kit/main -- "$@" ':(exclude).kit-upstream')
+    [ -n "$patch" ] || { echo "nothing to apply for: $*"; exit 0; }
+    # --3way: clean apply when your copy matches the base, a merge when you changed it too;
+    # real collisions leave conflict markers and unmerged index entries, never silent loss.
+    before=$(git -C "$wt" write-tree 2>/dev/null || git -C "$wt" rev-parse 'HEAD^{tree}')   # index snapshot: report only this run
+    err=$(mktemp "${TMPDIR:-/tmp}/brain-kit.XXXXXX"); apply_rc=0
+    printf '%s\n' "$patch" | git -C "$wt" apply --3way --index 2>"$err" || apply_rc=$?
+    conflicts=$(git -C "$wt" diff --name-only --diff-filter=U)
+    changed=$(git -C "$wt" diff --cached --name-status "$before" -- "$@" | while IFS=$'\t' read -r st p p2; do
+      case "$st" in R*|C*) p="$p2" ;; esac
+      case "$st" in U*) ;; *) echo "applied: ${st:0:1} $p" ;; esac
+    done)
+    [ -z "$changed" ] || echo "$changed"
+    if [ -n "$conflicts" ]; then
+      # shellcheck disable=SC2086  # one line per conflicted path
+      printf 'conflict: %s\n' $conflicts
+      echo "resolve the markers inside $wt, then \`git -C '$wt' add <file>\` each one before publishing" >&2
+      rm -f "$err"; exit 1
+    fi
+    if [ -z "$changed" ]; then
+      # a re-run: the worktree already carries these kit changes (taken, or merged earlier)
+      if [ "$apply_rc" -eq 0 ] || git -C "$wt" diff --cached --quiet kit/main -- "$@" ':(exclude).kit-upstream'; then
+        echo "nothing to apply for: $* (already current)"; rm -f "$err"; exit 0
+      fi
+      cat "$err" >&2; rm -f "$err"; die "patch did not apply"
+    fi
+    rm -f "$err"
+    ;;
+  mark)
+    wt=${2:?usage: brain-kit-update mark <worktree-path>}
+    [ -d "$wt" ] || die "not a directory: $wt"
+    fetch_kit
+    repo=$(kit_field repo); repo=${repo:-$KIT_URL}
+    {
+      echo "# The claude-brain-kit template this brain was generated from. The brain plugin's"
+      echo "# session-start hook probes it once a day and says when the template has new commits;"
+      echo "# /brain:update reviews and pulls them, then records the kit commit it reviewed here."
+      echo "#   repo <url>       where the template lives (\`repo off\` disables the check)"
+      echo "#   reviewed <sha>   last kit commit reviewed by /brain:update (absent = never)"
+      echo "repo $repo"
+      echo "reviewed $HEAD_KIT"
+      echo "date $(date +%Y-%m-%d)"
+    } > "$wt/.kit-upstream"
+    echo "marked: reviewed up to $(short "$HEAD_KIT") in $wt/.kit-upstream — publish with brain-write.sh"
+    ;;
+  *)
+    sed -n 's/^#   //p' "$0" >&2
+    exit 2
+    ;;
+esac
