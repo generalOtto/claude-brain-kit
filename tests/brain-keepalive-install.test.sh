@@ -357,6 +357,9 @@ assert_eq "$(grep -E 'chcp 65001|" -lc "' "$wrapper" | head -1 | grep -c 'chcp 6
 assert_eq "$(count '\r' < "$wrapper")" "$(count '\n' < "$wrapper")" "windows: every wrapper line ends CRLF"
 assert_contains "$out" "schtasks /Create /SC WEEKLY /D MON /ST 09:15 /TN \"claude-brain-keepalive\" /TR \"C:\home\.config\claude-brain\claude-keepalive.cmd\" /F" "windows: schtasks runs the wrapper"
 assert_lacks "$out" "bash -lc" "windows: no bare bash in the scheduled command"
+# registering the task is the user's step: no unit files, and no scheduler is called
+assert_eq "$([ -e "$HOME/.config/systemd" ] || echo none)" "none" "windows: nothing written under ~/.config/systemd"
+assert_eq "$(cat "$STUB_LOG")" "" "windows: install never calls systemctl or launchctl"
 t_teardown
 
 # W2. no <root>\bin\bash.exe (MSYS2, Cygwin): falls back to the running shell's bash
@@ -394,6 +397,7 @@ out=$(KW --uninstall)
 assert_eq "$([ -f "$HOME/$SCRIPT_FILE_REL" ] || echo gone)" "gone" "windows: uninstall removes keepalive script"
 assert_eq "$([ -f "$HOME/$WRAPPER_REL" ] || echo gone)" "gone" "windows: uninstall removes the wrapper"
 assert_contains "$out" "schtasks /Delete /TN \"claude-brain-keepalive\" /F" "windows: uninstall says how to remove the task"
+assert_eq "$(cat "$STUB_LOG")" "" "windows: uninstall never calls systemctl or launchctl"
 t_teardown
 
 # W5 (real Windows only). A Git root outside ASCII — a per-user install under a
